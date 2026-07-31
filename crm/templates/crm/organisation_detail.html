@@ -53,7 +53,7 @@
 {% elif tab == 'proposals' %}
 <div class="section">
   <h2>Proposals</h2>
-  {% if proposals %}<ul class="rows">{% for p in proposals %}<li>{{ p.proposal_number }} <span class="tag">{{ p.get_status_display }}</span></li>{% endfor %}</ul>
+  {% if proposals %}<ul class="rows">{% for p in proposals %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} <span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No proposals yet.</div>{% endif %}
 </div>
 

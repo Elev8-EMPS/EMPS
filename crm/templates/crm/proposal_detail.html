@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ proposal.proposal_number }} - EPMS{% endblock %}
+{% block header %}{{ proposal.proposal_number }}{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ proposal.proposal_number }}</h1>
+  <div class="meta">
+    <a href="/organisations/{{ proposal.organisation.pk }}/">{{ proposal.organisation.legal_name }}</a>
+    &middot; <span class="tag {% if proposal.status == 'accepted' %}ok{% elif proposal.status == 'declined' or proposal.status == 'lost' %}danger{% elif proposal.status == 'follow_up_due' %}warn{% endif %}">{{ proposal.get_status_display }}</span>
+    &middot; <a href="/admin/crm/proposal/{{ proposal.pk }}/change/">Edit in Admin</a>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Details</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Contact</div><div>{% if proposal.contact %}{{ proposal.contact.first_name }} {{ proposal.contact.last_name }}{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Linked enquiry</div><div>{{ proposal.enquiry.enquiry_number|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Fee</div><div>{% if proposal.fee_amount %}${{ proposal.fee_amount }}{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Version</div><div>{{ proposal.version }}</div></div>
+    <div class="field-row"><div class="k">Issue date</div><div>{{ proposal.issue_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Validity period</div><div>{{ proposal.validity_period_days }} days</div></div>
+    <div class="field-row"><div class="k">Follow-up date</div><div>{{ proposal.follow_up_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Director approved by</div><div>{{ proposal.director_approved_by.username|default:"—" }}</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Scope, exclusions &amp; assumptions</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Scope</div><div>{{ proposal.scope|default:"—"|linebreaksbr }}</div></div>
+    <div class="field-row"><div class="k">Exclusions</div><div>{{ proposal.exclusions|default:"—"|linebreaksbr }}</div></div>
+    <div class="field-row"><div class="k">Assumptions</div><div>{{ proposal.assumptions|default:"—"|linebreaksbr }}</div></div>
+  </div>
+</div>
+
+{% endblock %}

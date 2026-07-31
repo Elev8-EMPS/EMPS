@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 
 from tenants.utils import get_user_tenant
-from .models import Organisation
+from .models import Organisation, Proposal
 
 
 @login_required
@@ -40,4 +40,45 @@ def organisation_detail(request, pk):
         "enquiries": org.enquiries.all() if tab == "enquiries" else None,
         "proposals": org.proposals.all() if tab == "proposals" else None,
         "projects": org.projects.all() if tab == "projects" else None,
+    })
+
+
+@login_required
+def proposal_list(request):
+    tenant = get_user_tenant(request)
+    proposals = Proposal.objects.filter(tenant=tenant) if tenant else Proposal.objects.none()
+
+    q = request.GET.get("q", "").strip()
+    if q:
+        proposals = proposals.filter(proposal_number__icontains=q) | proposals.filter(
+            organisation__legal_name__icontains=q
+        )
+
+    status = request.GET.get("status", "").strip()
+    if status:
+        proposals = proposals.filter(status=status)
+
+    proposals = proposals.select_related("organisation").order_by("-issue_date", "proposal_number")
+
+    return render(request, "crm/proposal_list.html", {
+        "active_nav": "proposals",
+        "user_tenant": tenant,
+        "proposals": proposals,
+        "q": q,
+        "status": status,
+        "status_choices": Proposal.STATUS_CHOICES,
+    })
+
+
+@login_required
+def proposal_detail(request, pk):
+    tenant = get_user_tenant(request)
+    proposal = get_object_or_404(
+        Proposal.objects.select_related("organisation", "contact", "enquiry", "director_approved_by"),
+        pk=pk, tenant=tenant,
+    )
+    return render(request, "crm/proposal_detail.html", {
+        "active_nav": "proposals",
+        "user_tenant": tenant,
+        "proposal": proposal,
     })
