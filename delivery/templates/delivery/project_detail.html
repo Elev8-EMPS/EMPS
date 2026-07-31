@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_number }} - EPMS{% endblock %}
+{% block header %}{{ project.project_number }}{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ project.name }}</h1>
+  <div class="meta">
+    {{ project.project_number }} &middot; {{ project.client_organisation.legal_name }}
+    &middot; <span class="tag {% if project.status == 'at_risk' %}danger{% elif project.status == 'active' %}ok{% endif %}">{{ project.get_status_display }}</span>
+    &middot; <a href="/admin/delivery/project/{{ project.pk }}/change/">Edit in Admin</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="?tab=overview" class="{% if tab == 'overview' %}active{% endif %}">Overview</a>
+  <a href="?tab=milestones" class="{% if tab == 'milestones' %}active{% endif %}">Milestones ({{ project.milestones.count }})</a>
+  <a href="?tab=tasks" class="{% if tab == 'tasks' %}active{% endif %}">Tasks ({{ project.tasks.count }})</a>
+  <a href="?tab=documents" class="{% if tab == 'documents' %}active{% endif %}">Documents ({{ project.documents.count }})</a>
+</div>
+
+{% if tab == 'overview' %}
+<div class="section">
+  <h2>Overview</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Address</div><div>{{ project.address|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Project manager</div><div>{{ project.project_manager.username|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Director</div><div>{{ project.director.username|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Original fee</div><div>{% if project.original_fee %}${{ project.original_fee }}{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Start date</div><div>{{ project.start_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Target completion</div><div>{{ project.target_completion_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Completion date</div><div>{{ project.completion_date|default:"—" }}</div></div>
+  </div>
+</div>
+
+{% elif tab == 'milestones' %}
+<div class="section">
+  <h2>Milestones</h2>
+  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/admin/delivery/milestone/{{ m.pk }}/change/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No milestones yet. Add one via <a href="/admin/delivery/milestone/add/">Admin</a>.</div>{% endif %}
+</div>
+
+{% elif tab == 'tasks' %}
+<div class="section">
+  <h2>Tasks</h2>
+  {% if tasks %}<ul class="rows">{% for t in tasks %}<li><a href="/admin/delivery/task/{{ t.pk }}/change/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{{ t.get_status_display }} &middot; {{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No tasks yet.</div>{% endif %}
+</div>
+
+{% elif tab == 'documents' %}
+<div class="section">
+  <h2>Documents</h2>
+  {% if documents %}<ul class="rows">{% for d in documents %}<li><a href="/admin/delivery/document/{{ d.pk }}/change/">{{ d.display_name|default:d.original_filename }} <span class="tag">{{ d.category|default:"" }} &middot; v{{ d.version }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No documents yet.</div>{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

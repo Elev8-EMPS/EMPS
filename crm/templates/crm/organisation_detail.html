@@ -60,7 +60,7 @@
 {% elif tab == 'projects' %}
 <div class="section">
   <h2>Projects</h2>
-  {% if projects %}<ul class="rows">{% for p in projects %}<li>{{ p.project_number }} - {{ p.name }} <span class="tag">{{ p.get_status_display }}</span></li>{% endfor %}</ul>
+  {% if projects %}<ul class="rows">{% for p in projects %}<li><a href="/projects/{{ p.pk }}/">{{ p.project_number }} - {{ p.name }} <span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No projects yet.</div>{% endif %}
 </div>
 {% endif %}
