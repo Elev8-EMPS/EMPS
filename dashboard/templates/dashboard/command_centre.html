@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Command Centre - EPMS</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --ink: #1f2430; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb; --danger: #dc2626; --warn: #d97706; --ok: #059669;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:#111827; color:#fff; padding:20px 32px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  header a { color:#cbd5e1; text-decoration:none; font-size:14px; }
+  main { max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:32px; }
+  .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .kpi .num { font-size:26px; font-weight:700; }
+  .kpi .label { font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .section { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:18px; overflow:hidden; }
+  .section h2 { font-size:14px; margin:0; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa; }
+  .section h2 .count { color:var(--muted); font-weight:400; }
+  ul.rows { list-style:none; margin:0; padding:0; }
+  ul.rows li { padding:10px 18px; border-bottom:1px solid var(--border); font-size:14px; display:flex; justify-content:space-between; gap:12px;}
+  ul.rows li:last-child { border-bottom:none; }
+  .empty { padding:16px 18px; color:var(--muted); font-size:13.5px; }
+  .tag { font-size:11px; padding:2px 8px; border-radius:999px; background:#f3f4f6; color:var(--muted); white-space:nowrap; }
+  .tag.danger { background:#fee2e2; color:var(--danger); }
+  .tag.warn { background:#fef3c7; color:var(--warn); }
+  .tag.ok { background:#d1fae5; color:var(--ok); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px) { .grid-2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>EPMS Command Centre{% if tenant %} - {{ tenant.name }}{% endif %}</h1>
+  <a href="/admin/">Admin</a>
+</header>
+<main>
+  {% if no_tenant %}
+    <div class="section"><div class="empty">No tenant exists yet. Go to Admin &rarr; Tenants &rarr; Add to create your company record first.</div></div>
+  {% else %}
+  <div class="kpis">
+    <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
+    <div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>
+    <div class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></div>
+    <div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>
+    <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
+    <div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="section">
+        <h2>Deadlines due today <span class="count">({{ deadlines_today|length }})</span></h2>
+        {% if deadlines_today %}<ul class="rows">{% for m in deadlines_today %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing due today.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>Overdue milestones <span class="count">({{ overdue_milestones|length }})</span></h2>
+        {% if overdue_milestones %}<ul class="rows">{% for m in overdue_milestones %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue milestones.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>Deadlines due soon (7 days) <span class="count">({{ deadlines_soon|length }})</span></h2>
+        {% if deadlines_soon %}<ul class="rows">{% for m in deadlines_soon %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag warn">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing coming up in the next 7 days.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>Ready to invoice <span class="count">({{ ready_to_invoice|length }})</span></h2>
+        {% if ready_to_invoice %}<ul class="rows">{% for m in ready_to_invoice %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag ok">Approved</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing waiting to be invoiced.</div>{% endif %}
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <h2>Proposal follow-ups due <span class="count">({{ proposal_follow_ups|length }})</span></h2>
+        {% if proposal_follow_ups %}<ul class="rows">{% for p in proposal_follow_ups %}<li>{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag warn">{{ p.follow_up_date }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>Overdue invoices <span class="count">({{ overdue_invoices|length }})</span></h2>
+        {% if overdue_invoices %}<ul class="rows">{% for i in overdue_invoices %}<li>{{ i.invoice_number }} - {{ i.organisation.legal_name }}<span class="tag danger">${{ i.outstanding_amount }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue invoices.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>High priority tasks <span class="count">({{ high_priority_tasks|length }})</span></h2>
+        {% if high_priority_tasks %}<ul class="rows">{% for t in high_priority_tasks %}<li>{{ t.title }}<span class="tag {% if t.priority == 'critical' %}danger{% else %}warn{% endif %}">{{ t.get_priority_display }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No high priority tasks open.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</main>
+</body>
+</html>

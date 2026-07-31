@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "crm",
     "delivery",
     "finance",
+    "dashboard",
 ]
 
 MIDDLEWARE = [
@@ -110,3 +111,7 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# No custom login page yet - send anyone hitting a @login_required
+# view (like the Command Centre) to the admin login screen instead.
+LOGIN_URL = "/admin/login/"
