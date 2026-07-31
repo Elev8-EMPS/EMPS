@@ -1,47 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Command Centre - EPMS</title>
-<style>
-  :root {
-    --bg: #f4f5f7; --card: #ffffff; --ink: #1f2430; --muted: #6b7280;
-    --border: #e5e7eb; --accent: #2563eb; --danger: #dc2626; --warn: #d97706; --ok: #059669;
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--ink); }
-  header { background:#111827; color:#fff; padding:20px 32px; display:flex; justify-content:space-between; align-items:center; }
-  header h1 { font-size:18px; margin:0; font-weight:600; }
-  header a { color:#cbd5e1; text-decoration:none; font-size:14px; }
-  main { max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:32px; }
-  .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
-  .kpi .num { font-size:26px; font-weight:700; }
-  .kpi .label { font-size:12.5px; color:var(--muted); margin-top:2px; }
-  .section { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:18px; overflow:hidden; }
-  .section h2 { font-size:14px; margin:0; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa; }
-  .section h2 .count { color:var(--muted); font-weight:400; }
-  ul.rows { list-style:none; margin:0; padding:0; }
-  ul.rows li { padding:10px 18px; border-bottom:1px solid var(--border); font-size:14px; display:flex; justify-content:space-between; gap:12px;}
-  ul.rows li:last-child { border-bottom:none; }
-  .empty { padding:16px 18px; color:var(--muted); font-size:13.5px; }
-  .tag { font-size:11px; padding:2px 8px; border-radius:999px; background:#f3f4f6; color:var(--muted); white-space:nowrap; }
-  .tag.danger { background:#fee2e2; color:var(--danger); }
-  .tag.warn { background:#fef3c7; color:var(--warn); }
-  .tag.ok { background:#d1fae5; color:var(--ok); }
-  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-  @media (max-width:760px) { .grid-2 { grid-template-columns:1fr; } }
-</style>
-</head>
-<body>
-<header>
-  <h1>EPMS Command Centre{% if tenant %} - {{ tenant.name }}{% endif %}</h1>
-  <a href="/admin/">Admin</a>
-</header>
-<main>
-  {% if no_tenant %}
-    <div class="section"><div class="empty">No tenant exists yet. Go to Admin &rarr; Tenants &rarr; Add to create your company record first.</div></div>
-  {% else %}
+{% extends "base.html" %}
+{% block title %}Command Centre - EPMS{% endblock %}
+{% block header %}Command Centre{% endblock %}
+{% block content %}
+{% if no_tenant %}
+  <div class="section"><div class="empty">No tenant exists yet. Go to Admin &rarr; Tenants &rarr; Add to create your company record first.</div></div>
+{% elif not tenant %}
+  <div class="section"><div class="empty">Your account isn't assigned to a tenant yet. Ask an administrator to assign one in Admin &rarr; Users.</div></div>
+{% else %}
   <div class="kpis">
     <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
     <div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>
@@ -85,7 +50,5 @@
       </div>
     </div>
   </div>
-  {% endif %}
-</main>
-</body>
-</html>
+{% endif %}
+{% endblock %}

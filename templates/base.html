@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}EPMS{% endblock %}</title>
+<style>
+  :root {
+    --bg:#f4f5f7; --card:#fff; --ink:#1f2430; --muted:#6b7280; --border:#e5e7eb;
+    --accent:#2563eb; --danger:#dc2626; --warn:#d97706; --ok:#059669; --sidebar:#111827;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .shell { display:flex; min-height:100vh; }
+  nav.side { width:220px; background:var(--sidebar); color:#cbd5e1; flex-shrink:0; padding:18px 0; }
+  nav.side .brand { color:#fff; font-weight:700; font-size:16px; padding:0 20px 18px; border-bottom:1px solid #1f2937; margin-bottom:10px; }
+  nav.side a { display:block; padding:9px 20px; color:#cbd5e1; text-decoration:none; font-size:14px; }
+  nav.side a:hover, nav.side a.active { background:#1f2937; color:#fff; }
+  nav.side .tenant { padding:14px 20px; font-size:12px; color:#9ca3af; border-top:1px solid #1f2937; margin-top:10px; }
+  .content { flex:1; min-width:0; }
+  header.top { background:#fff; border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
+  header.top h1 { font-size:17px; margin:0; font-weight:600; }
+  header.top .user { font-size:13px; color:var(--muted); }
+  main { max-width:1100px; margin:0 auto; padding:26px 20px 60px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+  .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .kpi .num { font-size:26px; font-weight:700; }
+  .kpi .label { font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .section { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:18px; overflow:hidden; }
+  .section h2 { font-size:14px; margin:0; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa; }
+  .section h2 .count { color:var(--muted); font-weight:400; }
+  ul.rows { list-style:none; margin:0; padding:0; }
+  ul.rows li { padding:10px 18px; border-bottom:1px solid var(--border); font-size:14px; }
+  ul.rows li a { color:var(--ink); text-decoration:none; display:flex; justify-content:space-between; gap:12px; }
+  ul.rows li:hover { background:#fafafa; }
+  ul.rows li:last-child { border-bottom:none; }
+  .empty { padding:16px 18px; color:var(--muted); font-size:13.5px; }
+  .tag { font-size:11px; padding:2px 8px; border-radius:999px; background:#f3f4f6; color:var(--muted); white-space:nowrap; }
+  .tag.danger { background:#fee2e2; color:var(--danger); }
+  .tag.warn { background:#fef3c7; color:var(--warn); }
+  .tag.ok { background:#d1fae5; color:var(--ok); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px) { .grid-2 { grid-template-columns:1fr; } .shell { flex-direction:column; } nav.side { width:100%; } }
+  .searchbar { margin-bottom:18px; }
+  .searchbar input[type=text] { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; }
+  .btn { display:inline-block; padding:8px 16px; background:var(--accent); color:#fff; border-radius:8px; text-decoration:none; font-size:13.5px; border:none; cursor:pointer; }
+  table.list { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  table.list th { text-align:left; font-size:12px; color:var(--muted); text-transform:uppercase; padding:10px 16px; background:#fafafa; border-bottom:1px solid var(--border); }
+  table.list td { padding:12px 16px; border-bottom:1px solid var(--border); font-size:14px; }
+  table.list tr:last-child td { border-bottom:none; }
+  table.list tr:hover td { background:#fafafa; }
+  table.list a { color:var(--ink); text-decoration:none; font-weight:500; }
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+  .tabs a { padding:10px 16px; font-size:13.5px; text-decoration:none; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs a.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  .workspace-header { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px 24px; margin-bottom:20px; }
+  .workspace-header h1 { margin:0 0 4px; font-size:20px; }
+  .workspace-header .meta { color:var(--muted); font-size:13.5px; }
+  .field-row { display:flex; padding:8px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  .field-row:last-child { border-bottom:none; }
+  .field-row .k { width:160px; color:var(--muted); flex-shrink:0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="side">
+    <div class="brand">EPMS</div>
+    <a href="/" class="{% if active_nav == 'home' %}active{% endif %}">Home</a>
+    <a href="/organisations/" class="{% if active_nav == 'organisations' %}active{% endif %}">Organisations</a>
+    <a href="/admin/crm/enquiry/">Enquiries</a>
+    <a href="/admin/crm/proposal/">Fee Proposals</a>
+    <a href="/admin/delivery/project/">Projects</a>
+    <a href="/admin/delivery/milestone/">Milestones</a>
+    <a href="/admin/delivery/task/">Tasks</a>
+    <a href="/admin/delivery/document/">Documents</a>
+    <a href="/admin/finance/invoice/">Finance</a>
+    <a href="/admin/">Administration</a>
+    {% if request.user.is_authenticated %}
+    <div class="tenant">
+      {{ request.user.username }}{% if user_tenant %}<br>{{ user_tenant.name }}{% endif %}
+      <br><a href="/admin/logout/" style="padding:0; margin-top:6px; display:inline-block;">Sign out</a>
+    </div>
+    {% endif %}
+  </nav>
+  <div class="content">
+    <header class="top">
+      <h1>{% block header %}EPMS{% endblock %}</h1>
+      <div class="user">{% if user_tenant %}{{ user_tenant.name }}{% endif %}</div>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

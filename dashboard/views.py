@@ -43,7 +43,9 @@ def command_centre(request):
 
     context = {
         "no_tenant": False,
+        "active_nav": "home",
         "tenant": tenant,
+        "user_tenant": tenant,
         # KPI cards
         "active_projects_count": milestones.values("project").distinct().filter(
             project__status="active"
