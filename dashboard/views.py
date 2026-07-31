@@ -21,7 +21,12 @@ def command_centre(request):
     the logged-in user's tenant instead of Tenant.objects.first().
     """
 
-    tenant = Tenant.objects.first()
+    if request.user.is_superuser:
+        tenant = Tenant.objects.first()
+    else:
+        profile = getattr(request.user, "profile", None)
+        tenant = profile.tenant if profile else None
+
     today = datetime.date.today()
     soon = today + datetime.timedelta(days=7)
 

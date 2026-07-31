@@ -32,3 +32,19 @@ class TenantModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class UserProfile(models.Model):
+    """
+    Links a Django user to the tenant they belong to.
+    Superusers can leave this blank/no tenant - they see everything.
+    A regular user with a tenant set here gets that tenant
+    auto-filled (and hidden) on every form, and only ever sees
+    that tenant's records.
+    """
+
+    user = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="profile")
+    tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="users")
+
+    def __str__(self):
+        return f"{self.user.username} -> {self.tenant.name if self.tenant else 'no tenant'}"
