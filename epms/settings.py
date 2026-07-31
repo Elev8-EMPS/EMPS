@@ -115,3 +115,23 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # No custom login page yet - send anyone hitting a @login_required
 # view (like the Command Centre) to the admin login screen instead.
 LOGIN_URL = "/admin/login/"
+
+# With DEBUG=False, Django normally shows visitors a generic error
+# page and prints nothing useful to the console. This makes server
+# errors print their full traceback to the console (visible only to
+# you, in Render's Logs tab) so real problems are diagnosable without
+# ever exposing a stack trace to an actual visitor.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+    },
+}
