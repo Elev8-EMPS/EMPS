@@ -64,3 +64,48 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Modality(models.Model):
+    """
+    A discipline/service type a project can involve - e.g.
+    'Hydraulics', 'Structural', 'Civil'. Admin-configurable per
+    tenant. Selecting a modality on a project pulls in that
+    modality's 'always included' checklist items automatically.
+    """
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="modalities")
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class ChecklistItemTemplate(models.Model):
+    """
+    A checklist item definition. If modality is blank, it's a
+    universal item added to every project regardless of modality
+    (e.g. 'Site photos taken'). If modality is set and
+    always_included is True, it's automatically added whenever that
+    modality is selected on a project (e.g. Hydraulics -> 'Sewer
+    application', 'Pressure and flow application'). If
+    always_included is False, it's available to add but not forced.
+    """
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="checklist_templates")
+    modality = models.ForeignKey(
+        Modality, null=True, blank=True, on_delete=models.CASCADE, related_name="checklist_templates"
+    )
+    text = models.CharField(max_length=255)
+    always_included = models.BooleanField(
+        default=True,
+        help_text="If checked, this item is added automatically whenever its modality is selected "
+                   "(or to every project, if no modality is set). If unchecked, it's available to add manually.",
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "text"]
+
+    def __str__(self):
+        return self.text

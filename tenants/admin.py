@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 
 from .admin_mixins import TenantScopedAdmin
-from .models import Tenant, UserProfile, Team
+from .models import Tenant, UserProfile, Team, Modality, ChecklistItemTemplate
 
 
 @admin.register(Tenant)
@@ -15,6 +15,17 @@ class TenantAdmin(admin.ModelAdmin):
 class TeamAdmin(TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("name", "tenant")
     filter_horizontal = ("members",)
+
+
+@admin.register(Modality)
+class ModalityAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("name", "tenant")
+
+
+@admin.register(ChecklistItemTemplate)
+class ChecklistItemTemplateAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("text", "modality", "always_included", "order", "tenant")
+    list_filter = ("modality", "always_included", "tenant")
 
 
 class UserProfileInline(admin.StackedInline):

@@ -19,6 +19,7 @@
   <a href="?tab=documents" class="{% if tab == 'documents' %}active{% endif %}">Documents ({{ project.documents.count }})</a>
   <a href="?tab=finance" class="{% if tab == 'finance' %}active{% endif %}">Finance ({{ project.invoices.count }})</a>
   <a href="?tab=communications" class="{% if tab == 'communications' %}active{% endif %}">Communications ({{ project.communications.count }})</a>
+  <a href="?tab=checklist" class="{% if tab == 'checklist' %}active{% endif %}">Checklist ({{ project.checklist_items.count }})</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -39,6 +40,18 @@
   <h2>Open to-dos <span class="count">({{ open_todos|length }})</span></h2>
   {% if open_todos %}<ul class="rows">{% for t in open_todos %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{% if t.assigned_team %}{{ t.assigned_team.name }}{% elif t.owner %}{{ t.owner.username }}{% else %}Unassigned{% endif %} &middot; {{ t.due_date|default:"no due date" }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No open to-dos on this project.</div>{% endif %}
+</div>
+
+<div class="section">
+  <h2>Checklist</h2>
+  <div style="padding:18px;">
+    {% if checklist_summary.total %}
+      <p style="margin:0 0 10px;">{{ checklist_summary.done }} of {{ checklist_summary.total }} items complete.
+        <a href="?tab=checklist">View checklist &rarr;</a></p>
+    {% else %}
+      <p style="margin:0;">No checklist yet. <a href="?tab=checklist">Set one up &rarr;</a></p>
+    {% endif %}
+  </div>
 </div>
 
 {% elif tab == 'milestones' %}
@@ -80,6 +93,62 @@
   {% if communications %}<ul class="rows">{% for c in communications %}<li><a href="/communications/{{ c.pk }}/">{{ c.subject|default:c.get_communication_type_display }} <span class="tag">{{ c.get_communication_type_display }} &middot; {{ c.occurred_at|date:"Y-m-d" }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No communications logged for this project yet.</div>{% endif %}
 </div>
+
+{% elif tab == 'checklist' %}
+
+{% if checklist_progress.total %}
+<div class="section">
+  <div style="padding:16px 18px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+      <strong>{{ checklist_progress.done }} of {{ checklist_progress.total }} complete</strong>
+      <span>{{ checklist_progress.pct }}%</span>
+    </div>
+    <div style="background:#f0f0f0; border-radius:999px; height:8px; overflow:hidden;">
+      <div style="background:var(--ok); height:100%; width:{{ checklist_progress.pct }}%;"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% regroup checklist_items by modality as modality_groups %}
+{% for group in modality_groups %}
+<div class="section">
+  <h2>{{ group.grouper.name|default:"General" }}</h2>
+  <ul class="rows">
+    {% for item in group.list %}
+    <li style="display:flex; align-items:center; gap:10px;">
+      <form method="post" action="/checklist-items/{{ item.pk }}/toggle/" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="border:none; background:none; cursor:pointer; padding:0; font-size:16px;">
+          {% if item.is_done %}&#9745;{% else %}&#9744;{% endif %}
+        </button>
+      </form>
+      <span style="{% if item.is_done %}text-decoration:line-through; color:var(--muted);{% endif %} flex:1;">{{ item.text }}</span>
+      {% if item.is_done %}<span class="tag ok" style="font-size:10.5px;">{{ item.done_by.username }} &middot; {{ item.done_at|date:"Y-m-d" }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% empty %}
+<div class="section"><div class="empty">No checklist items yet — add a modality below to generate one.</div></div>
+{% endfor %}
+
+{% if available_modalities %}
+<div class="section">
+  <h2>Add a modality</h2>
+  <div style="padding:18px;">
+    <form method="post" style="display:flex; gap:10px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_modality">
+      <select name="modality" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        {% for m in available_modalities %}<option value="{{ m.pk }}">{{ m.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn">Add</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 {% endif %}
 
 {% endblock %}

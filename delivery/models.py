@@ -31,6 +31,7 @@ class Project(TenantModel):
     )
     original_proposal = models.ForeignKey(Proposal, null=True, blank=True, on_delete=models.SET_NULL)
     original_fee = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    modalities = models.ManyToManyField("tenants.Modality", blank=True, related_name="projects")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="setup")
     start_date = models.DateField(null=True, blank=True)
     target_completion_date = models.DateField(null=True, blank=True)
@@ -176,3 +177,30 @@ class Document(TenantModel):
 
     def __str__(self):
         return self.display_name or self.original_filename
+
+
+class ProjectChecklistItem(TenantModel):
+    """
+    An actual checklist line on a specific project - generated from
+    ChecklistItemTemplate when the project is created (or a modality
+    is added later), but stores its own copy of the text so editing
+    a template later doesn't rewrite history on existing projects.
+    """
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="checklist_items")
+    modality = models.ForeignKey(
+        "tenants.Modality", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    text = models.CharField(max_length=255)
+    is_done = models.BooleanField(default=False)
+    done_by = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    done_at = models.DateTimeField(null=True, blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "text"]
+
+    def __str__(self):
+        return self.text

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}New Project - EPMS{% endblock %}
+{% block header %}New Project{% endblock %}
+{% block content %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project number <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="project_number" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project name <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="name" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client organisation <span style="color:var(--danger);">*</span></label>
+        <select name="client_organisation" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— Select —</option>
+          {% for o in organisations %}<option value="{{ o.pk }}">{{ o.legal_name }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Address</label>
+        <input type="text" name="address" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project manager</label>
+          <select name="project_manager" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for u in users %}<option value="{{ u.pk }}">{{ u.username }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Start date</label>
+          <input type="date" name="start_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Target completion</label>
+          <input type="date" name="target_completion_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <div class="section" style="margin-bottom:20px;">
+        <h2>Modalities</h2>
+        <div style="padding:18px;">
+          <p style="margin-top:0; font-size:13.5px; color:var(--muted);">Select every discipline this project involves. Each one automatically adds its standard checklist items (configured in Admin &rarr; Checklist Item Templates).</p>
+          {% if modalities %}
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px;">
+            {% for m in modalities %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+              <input type="checkbox" name="modalities" value="{{ m.pk }}"> {{ m.name }}
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty">No modalities set up yet. You can add them later via <a href="/admin/tenants/modality/add/">Admin</a>, and add them to this project from its Checklist tab afterward.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn">Create project</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
-from .models import Project, Milestone, Task, Document, TaskComment
+from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem
 
 
 @admin.register(Project)
@@ -10,6 +10,7 @@ class ProjectAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_filter = ("status", "tenant")
     search_fields = ("project_number", "name", "client_organisation__legal_name")
     date_hierarchy = "start_date"
+    filter_horizontal = ("modalities",)
 
 
 @admin.register(Milestone)
@@ -45,3 +46,9 @@ class DocumentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 class TaskCommentAdmin(TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("task", "author", "created_at", "tenant")
     list_filter = ("tenant",)
+
+
+@admin.register(ProjectChecklistItem)
+class ProjectChecklistItemAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("text", "project", "modality", "is_done", "tenant")
+    list_filter = ("is_done", "modality", "tenant")

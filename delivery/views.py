@@ -4,9 +4,73 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.models import Team
+from tenants.models import Team, Modality, ChecklistItemTemplate
 from tenants.utils import get_user_tenant
-from .models import Project, Milestone, Task, Document, TaskComment
+from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem
+
+
+def _generate_checklist_items(project, tenant, modality_ids):
+    """
+    Creates ProjectChecklistItem rows from templates: every universal
+    'always included' item (no modality), plus every 'always
+    included' item for each selected modality. Skips duplicates if
+    called again (e.g. a modality added after project creation).
+    """
+    templates = ChecklistItemTemplate.objects.filter(tenant=tenant, always_included=True).filter(
+        Q(modality__isnull=True) | Q(modality_id__in=modality_ids)
+    )
+    existing_texts = set(project.checklist_items.values_list("text", flat=True))
+    new_items = []
+    for tmpl in templates:
+        if tmpl.text in existing_texts:
+            continue
+        new_items.append(ProjectChecklistItem(
+            tenant=tenant, project=project, modality=tmpl.modality, text=tmpl.text, order=tmpl.order,
+        ))
+    ProjectChecklistItem.objects.bulk_create(new_items)
+
+
+@login_required
+def project_create(request):
+    tenant = get_user_tenant(request)
+
+    if request.method == "POST":
+        project = Project(
+            tenant=tenant,
+            project_number=request.POST.get("project_number", "").strip(),
+            name=request.POST.get("name", "").strip(),
+            address=request.POST.get("address", "").strip(),
+            start_date=request.POST.get("start_date") or None,
+            target_completion_date=request.POST.get("target_completion_date") or None,
+        )
+        org_id = request.POST.get("client_organisation")
+        if org_id:
+            project.client_organisation_id = org_id
+        pm_id = request.POST.get("project_manager")
+        if pm_id:
+            project.project_manager_id = pm_id
+
+        modality_ids = [int(x) for x in request.POST.getlist("modalities")]
+
+        if project.project_number and project.name and org_id:
+            project.save()
+            if modality_ids:
+                project.modalities.set(modality_ids)
+            _generate_checklist_items(project, tenant, modality_ids)
+            return redirect("project_detail", pk=project.pk)
+
+    from crm.models import Organisation
+    organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name") if tenant else Organisation.objects.none()
+    users = User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none()
+    modalities = Modality.objects.filter(tenant=tenant).order_by("name") if tenant else Modality.objects.none()
+
+    return render(request, "delivery/project_create.html", {
+        "active_nav": "projects",
+        "user_tenant": tenant,
+        "organisations": organisations,
+        "users": users,
+        "modalities": modalities,
+    })
 
 
 @login_required
@@ -42,7 +106,28 @@ def project_detail(request, pk):
         pk=pk, tenant=tenant,
     )
 
+    if request.method == "POST" and request.POST.get("action") == "add_modality":
+        modality_id = request.POST.get("modality")
+        if modality_id:
+            project.modalities.add(modality_id)
+            _generate_checklist_items(project, tenant, list(project.modalities.values_list("id", flat=True)))
+        return redirect(f"/projects/{project.pk}/?tab=checklist")
+
     tab = request.GET.get("tab", "overview")
+
+    checklist_items = None
+    checklist_progress = None
+    if tab == "checklist":
+        checklist_items = project.checklist_items.select_related("modality").order_by("modality__name", "order", "text")
+        total = checklist_items.count()
+        done = checklist_items.filter(is_done=True).count()
+        checklist_progress = {"total": total, "done": done, "pct": round(done / total * 100) if total else 0}
+
+    checklist_summary = None
+    if tab == "overview":
+        total = project.checklist_items.count()
+        done = project.checklist_items.filter(is_done=True).count()
+        checklist_summary = {"total": total, "done": done}
 
     return render(request, "delivery/project_detail.html", {
         "active_nav": "projects",
@@ -56,7 +141,25 @@ def project_detail(request, pk):
         "open_todos": project.tasks.exclude(status__in=["completed", "cancelled"]).order_by("due_date")
         if tab == "overview" else None,
         "communications": project.communications.order_by("-occurred_at") if tab == "communications" else None,
+        "checklist_items": checklist_items,
+        "checklist_progress": checklist_progress,
+        "checklist_summary": checklist_summary,
+        "available_modalities": Modality.objects.filter(tenant=tenant).exclude(
+            id__in=project.modalities.values_list("id", flat=True)
+        ) if tab == "checklist" else None,
     })
+
+
+@login_required
+def checklist_toggle(request, pk):
+    tenant = get_user_tenant(request)
+    item = get_object_or_404(ProjectChecklistItem, pk=pk, tenant=tenant)
+    if request.method == "POST":
+        item.is_done = not item.is_done
+        item.done_by = request.user if item.is_done else None
+        item.done_at = timezone.now() if item.is_done else None
+        item.save()
+    return redirect(f"/projects/{item.project_id}/?tab=checklist")
 
 
 @login_required
