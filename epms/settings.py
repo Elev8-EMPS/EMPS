@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "security",
     "django_otp",
     "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
 ]
 
 MIDDLEWARE = [
