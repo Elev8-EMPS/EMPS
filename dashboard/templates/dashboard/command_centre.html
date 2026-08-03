@@ -20,19 +20,19 @@
     <div>
       <div class="section">
         <h2>Deadlines due today <span class="count">({{ deadlines_today|length }})</span></h2>
-        {% if deadlines_today %}<ul class="rows">{% for m in deadlines_today %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing due today.</div>{% endif %}
+        {% if deadlines_today %}<ul class="rows">{% for m in deadlines_today %}<li><a href="/milestones/{{ m.pk }}/">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing due today.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Overdue milestones <span class="count">({{ overdue_milestones|length }})</span></h2>
-        {% if overdue_milestones %}<ul class="rows">{% for m in overdue_milestones %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue milestones.</div>{% endif %}
+        {% if overdue_milestones %}<ul class="rows">{% for m in overdue_milestones %}<li><a href="/milestones/{{ m.pk }}/">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue milestones.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Deadlines due soon (7 days) <span class="count">({{ deadlines_soon|length }})</span></h2>
-        {% if deadlines_soon %}<ul class="rows">{% for m in deadlines_soon %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag warn">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing coming up in the next 7 days.</div>{% endif %}
+        {% if deadlines_soon %}<ul class="rows">{% for m in deadlines_soon %}<li><a href="/milestones/{{ m.pk }}/">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag warn">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing coming up in the next 7 days.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Ready to invoice <span class="count">({{ ready_to_invoice|length }})</span></h2>
-        {% if ready_to_invoice %}<ul class="rows">{% for m in ready_to_invoice %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag ok">Approved</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing waiting to be invoiced.</div>{% endif %}
+        {% if ready_to_invoice %}<ul class="rows">{% for m in ready_to_invoice %}<li><a href="/milestones/{{ m.pk }}/">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag ok">Approved</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing waiting to be invoiced.</div>{% endif %}
       </div>
     </div>
     <div>
@@ -46,7 +46,7 @@
       </div>
       <div class="section">
         <h2>High priority tasks <span class="count">({{ high_priority_tasks|length }})</span></h2>
-        {% if high_priority_tasks %}<ul class="rows">{% for t in high_priority_tasks %}<li>{{ t.title }}<span class="tag {% if t.priority == 'critical' %}danger{% else %}warn{% endif %}">{{ t.get_priority_display }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No high priority tasks open.</div>{% endif %}
+        {% if high_priority_tasks %}<ul class="rows">{% for t in high_priority_tasks %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }}<span class="tag {% if t.priority == 'critical' %}danger{% else %}warn{% endif %}">{{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No high priority tasks open.</div>{% endif %}
       </div>
     </div>
   </div>

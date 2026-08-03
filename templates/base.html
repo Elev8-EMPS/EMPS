@@ -69,9 +69,9 @@
     <a href="/enquiries/" class="{% if active_nav == 'enquiries' %}active{% endif %}">Enquiries</a>
     <a href="/proposals/" class="{% if active_nav == 'proposals' %}active{% endif %}">Fee Proposals</a>
     <a href="/projects/" class="{% if active_nav == 'projects' %}active{% endif %}">Projects</a>
-    <a href="/admin/delivery/milestone/">Milestones</a>
-    <a href="/admin/delivery/task/">Tasks</a>
-    <a href="/admin/delivery/document/">Documents</a>
+    <a href="/milestones/" class="{% if active_nav == 'milestones' %}active{% endif %}">Milestones</a>
+    <a href="/tasks/" class="{% if active_nav == 'tasks' %}active{% endif %}">Tasks</a>
+    <a href="/documents/" class="{% if active_nav == 'documents' %}active{% endif %}">Documents</a>
     <a href="/invoices/" class="{% if active_nav == 'finance' %}active{% endif %}">Finance</a>
     <a href="/admin/">Administration</a>
     {% if request.user.is_authenticated %}

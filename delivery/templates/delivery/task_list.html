@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Tasks - EPMS{% endblock %}
+{% block header %}Tasks{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by task title...">
+    <select name="status" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="priority" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All priorities</option>
+      {% for value, label in priority_choices %}
+        <option value="{{ value }}" {% if priority == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter</button>
+    <a href="/admin/delivery/task/add/" class="btn" style="background:var(--ok); margin-left:auto;">+ New task</a>
+  </form>
+</div>
+
+{% if tasks %}
+<table class="list">
+  <tr><th>Task</th><th>Project</th><th>Status</th><th>Priority</th><th>Owner</th><th>Due date</th></tr>
+  {% for t in tasks %}
+  <tr>
+    <td><a href="/tasks/{{ t.pk }}/">{{ t.title }}</a></td>
+    <td>{{ t.related_project.project_number|default:"—" }}</td>
+    <td><span class="tag {% if t.status == 'completed' %}ok{% elif t.status == 'blocked' %}danger{% endif %}">{{ t.get_status_display }}</span></td>
+    <td><span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{{ t.get_priority_display }}</span></td>
+    <td>{{ t.owner.username|default:"—" }}</td>
+    <td>{{ t.due_date|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q or status or priority %}No tasks match these filters.{% else %}No tasks yet. Add one via <a href="/admin/delivery/task/add/">Admin</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

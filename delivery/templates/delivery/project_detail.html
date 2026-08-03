@@ -37,21 +37,21 @@
 {% elif tab == 'milestones' %}
 <div class="section">
   <h2>Milestones</h2>
-  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/admin/delivery/milestone/{{ m.pk }}/change/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}</span></a></li>{% endfor %}</ul>
+  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No milestones yet. Add one via <a href="/admin/delivery/milestone/add/">Admin</a>.</div>{% endif %}
 </div>
 
 {% elif tab == 'tasks' %}
 <div class="section">
   <h2>Tasks</h2>
-  {% if tasks %}<ul class="rows">{% for t in tasks %}<li><a href="/admin/delivery/task/{{ t.pk }}/change/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{{ t.get_status_display }} &middot; {{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>
+  {% if tasks %}<ul class="rows">{% for t in tasks %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{{ t.get_status_display }} &middot; {{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No tasks yet.</div>{% endif %}
 </div>
 
 {% elif tab == 'documents' %}
 <div class="section">
   <h2>Documents</h2>
-  {% if documents %}<ul class="rows">{% for d in documents %}<li><a href="/admin/delivery/document/{{ d.pk }}/change/">{{ d.display_name|default:d.original_filename }} <span class="tag">{{ d.category|default:"" }} &middot; v{{ d.version }}</span></a></li>{% endfor %}</ul>
+  {% if documents %}<ul class="rows">{% for d in documents %}<li><a href="/documents/{{ d.pk }}/">{{ d.display_name|default:d.original_filename }} <span class="tag">{{ d.category|default:"" }} &middot; v{{ d.version }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No documents yet.</div>{% endif %}
 </div>
 
