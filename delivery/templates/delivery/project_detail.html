@@ -34,6 +34,12 @@
   </div>
 </div>
 
+<div class="section">
+  <h2>Open to-dos <span class="count">({{ open_todos|length }})</span></h2>
+  {% if open_todos %}<ul class="rows">{% for t in open_todos %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{% if t.assigned_team %}{{ t.assigned_team.name }}{% elif t.owner %}{{ t.owner.username }}{% else %}Unassigned{% endif %} &middot; {{ t.due_date|default:"no due date" }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No open to-dos on this project.</div>{% endif %}
+</div>
+
 {% elif tab == 'milestones' %}
 <div class="section">
   <h2>Milestones</h2>

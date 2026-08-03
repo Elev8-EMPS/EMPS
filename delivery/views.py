@@ -2,10 +2,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from tenants.models import Team
 from tenants.utils import get_user_tenant
-from .models import Project, Milestone, Task, Document
+from .models import Project, Milestone, Task, Document, TaskComment
 
 
 @login_required
@@ -52,6 +53,8 @@ def project_detail(request, pk):
         "tasks": project.tasks.order_by("due_date") if tab == "tasks" else None,
         "documents": project.documents.order_by("-uploaded_at") if tab == "documents" else None,
         "invoices": project.invoices.order_by("-due_date") if tab == "finance" else None,
+        "open_todos": project.tasks.exclude(status__in=["completed", "cancelled"]).order_by("due_date")
+        if tab == "overview" else None,
     })
 
 
@@ -197,10 +200,28 @@ def task_detail(request, pk):
         Task.objects.select_related("owner", "related_project", "related_milestone", "created_by", "assigned_team"),
         pk=pk, tenant=tenant,
     )
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "comment":
+            body = request.POST.get("body", "").strip()
+            if body:
+                TaskComment.objects.create(tenant=tenant, task=task, author=request.user, body=body)
+        elif action == "complete":
+            task.status = "completed"
+            task.completed_at = timezone.now()
+            task.save()
+        elif action == "reopen":
+            task.status = "in_progress"
+            task.completed_at = None
+            task.save()
+        return redirect("task_detail", pk=task.pk)
+
     return render(request, "delivery/task_detail.html", {
         "active_nav": "tasks",
         "user_tenant": tenant,
         "task": task,
+        "comments": task.comments.select_related("author"),
     })
 
 

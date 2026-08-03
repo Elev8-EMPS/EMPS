@@ -10,6 +10,13 @@
     &middot; <span class="tag {% if task.priority == 'critical' %}danger{% elif task.priority == 'high' %}warn{% endif %}">{{ task.get_priority_display }}</span>
     &middot; <a href="/admin/delivery/task/{{ task.pk }}/change/">Edit in Admin</a>
   </div>
+  <div style="margin-top:12px;">
+    {% if task.status == 'completed' %}
+    <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="reopen"><button type="submit" class="btn" style="background:var(--warn);">Reopen</button></form>
+    {% else %}
+    <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="complete"><button type="submit" class="btn" style="background:var(--ok);">Mark complete</button></form>
+    {% endif %}
+  </div>
 </div>
 
 <div class="section">
@@ -30,6 +37,31 @@
 <div class="section">
   <h2>Description</h2>
   <div style="padding:18px;">{{ task.description|default:"—"|linebreaksbr }}</div>
+</div>
+
+<div class="section">
+  <h2>Responses <span class="count">({{ comments|length }})</span></h2>
+  {% if comments %}
+  <ul class="rows">
+    {% for c in comments %}
+    <li>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <strong>{{ c.author.username|default:"Unknown" }}</strong>
+        <span style="color:var(--muted); font-size:12.5px;">{{ c.created_at|date:"Y-m-d H:i" }}</span>
+      </div>
+      <div>{{ c.body|linebreaksbr }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<div class="empty">No responses yet.</div>{% endif %}
+  <div style="padding:18px; border-top:1px solid var(--border);">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="comment">
+      <textarea name="body" rows="3" required placeholder="Respond to {% if task.assigned_team %}{{ task.assigned_team.name }}{% elif task.owner %}{{ task.owner.username }}{% endif %}{% if task.created_by %} or {{ task.created_by.username }}{% endif %}..." style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;"></textarea>
+      <button type="submit" class="btn">Post response</button>
+    </form>
+  </div>
 </div>
 
 {% endblock %}

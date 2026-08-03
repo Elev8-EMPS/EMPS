@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
-from .models import Project, Milestone, Task, Document
+from .models import Project, Milestone, Task, Document, TaskComment
 
 
 @admin.register(Project)
@@ -39,3 +39,9 @@ class DocumentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_filter = ("category", "document_type", "confidentiality", "tenant")
     search_fields = ("display_name", "original_filename")
     date_hierarchy = "uploaded_at"
+
+
+@admin.register(TaskComment)
+class TaskCommentAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("task", "author", "created_at", "tenant")
+    list_filter = ("tenant",)

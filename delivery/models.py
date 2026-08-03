@@ -134,6 +134,26 @@ class Task(TenantModel):
         return self.title
 
 
+class TaskComment(TenantModel):
+    """
+    A response/comment on a to-do - never overwrites the original
+    action, just adds to a visible thread. This is how someone
+    responds to the assignee, the team, or the creator without
+    losing the original request.
+    """
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Comment on {self.task.title} by {self.author}"
+
+
 class Document(TenantModel):
     """Blueprint section 16 - Documents module."""
 
