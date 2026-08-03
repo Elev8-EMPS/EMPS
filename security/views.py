@@ -105,3 +105,27 @@ def remove_2fa(request):
         StaticDevice.objects.filter(user=request.user).delete()
         messages.success(request, "Two-factor authentication has been removed from your account.")
     return redirect("setup_2fa")
+
+
+@login_required
+def verify_2fa(request):
+    """
+    The actual enforcement challenge. Only ever reached by users the
+    RequireOTPForSuperusers middleware has decided need it (confirmed
+    device, not yet verified this session). Accepts either a live
+    TOTP code or a one-time backup code - django_otp.match_token
+    checks both automatically and handles backup-code consumption.
+    """
+    from django_otp import match_token
+
+    next_url = request.GET.get("next") or request.POST.get("next") or "/"
+
+    if request.method == "POST":
+        token = request.POST.get("token", "").strip()
+        device = match_token(request.user, token)
+        if device is not None:
+            otp_login(request, device)
+            return redirect(next_url)
+        messages.error(request, "That code wasn't recognised - check your authenticator app, or use a backup code.")
+
+    return render(request, "security/verify_2fa.html", {"next": next_url})
