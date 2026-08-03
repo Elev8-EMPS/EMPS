@@ -72,7 +72,7 @@
     <a href="/admin/delivery/milestone/">Milestones</a>
     <a href="/admin/delivery/task/">Tasks</a>
     <a href="/admin/delivery/document/">Documents</a>
-    <a href="/admin/finance/invoice/">Finance</a>
+    <a href="/invoices/" class="{% if active_nav == 'finance' %}active{% endif %}">Finance</a>
     <a href="/admin/">Administration</a>
     {% if request.user.is_authenticated %}
     <div class="tenant">

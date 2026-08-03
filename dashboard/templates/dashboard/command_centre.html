@@ -20,29 +20,29 @@
     <div>
       <div class="section">
         <h2>Deadlines due today <span class="count">({{ deadlines_today|length }})</span></h2>
-        {% if deadlines_today %}<ul class="rows">{% for m in deadlines_today %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing due today.</div>{% endif %}
+        {% if deadlines_today %}<ul class="rows">{% for m in deadlines_today %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing due today.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Overdue milestones <span class="count">({{ overdue_milestones|length }})</span></h2>
-        {% if overdue_milestones %}<ul class="rows">{% for m in overdue_milestones %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue milestones.</div>{% endif %}
+        {% if overdue_milestones %}<ul class="rows">{% for m in overdue_milestones %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag danger">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue milestones.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Deadlines due soon (7 days) <span class="count">({{ deadlines_soon|length }})</span></h2>
-        {% if deadlines_soon %}<ul class="rows">{% for m in deadlines_soon %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag warn">{{ m.deadline }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing coming up in the next 7 days.</div>{% endif %}
+        {% if deadlines_soon %}<ul class="rows">{% for m in deadlines_soon %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag warn">{{ m.deadline }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing coming up in the next 7 days.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Ready to invoice <span class="count">({{ ready_to_invoice|length }})</span></h2>
-        {% if ready_to_invoice %}<ul class="rows">{% for m in ready_to_invoice %}<li>{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag ok">Approved</span></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing waiting to be invoiced.</div>{% endif %}
+        {% if ready_to_invoice %}<ul class="rows">{% for m in ready_to_invoice %}<li><a href="/projects/{{ m.project.pk }}/?tab=milestones">{{ m.project.project_number }} - {{ m.milestone_type }}<span class="tag ok">Approved</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">Nothing waiting to be invoiced.</div>{% endif %}
       </div>
     </div>
     <div>
       <div class="section">
         <h2>Proposal follow-ups due <span class="count">({{ proposal_follow_ups|length }})</span></h2>
-        {% if proposal_follow_ups %}<ul class="rows">{% for p in proposal_follow_ups %}<li>{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag warn">{{ p.follow_up_date }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
+        {% if proposal_follow_ups %}<ul class="rows">{% for p in proposal_follow_ups %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag warn">{{ p.follow_up_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
       </div>
       <div class="section">
         <h2>Overdue invoices <span class="count">({{ overdue_invoices|length }})</span></h2>
-        {% if overdue_invoices %}<ul class="rows">{% for i in overdue_invoices %}<li>{{ i.invoice_number }} - {{ i.organisation.legal_name }}<span class="tag danger">${{ i.outstanding_amount }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue invoices.</div>{% endif %}
+        {% if overdue_invoices %}<ul class="rows">{% for i in overdue_invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} - {{ i.organisation.legal_name }}<span class="tag danger">${{ i.outstanding_amount }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue invoices.</div>{% endif %}
       </div>
       <div class="section">
         <h2>High priority tasks <span class="count">({{ high_priority_tasks|length }})</span></h2>

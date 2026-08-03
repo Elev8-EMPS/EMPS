@@ -48,4 +48,5 @@ def project_detail(request, pk):
         "milestones": project.milestones.order_by("deadline") if tab == "milestones" else None,
         "tasks": project.tasks.order_by("due_date") if tab == "tasks" else None,
         "documents": project.documents.order_by("-uploaded_at") if tab == "documents" else None,
+        "invoices": project.invoices.order_by("-due_date") if tab == "finance" else None,
     })

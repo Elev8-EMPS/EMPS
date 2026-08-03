@@ -17,6 +17,7 @@
   <a href="?tab=milestones" class="{% if tab == 'milestones' %}active{% endif %}">Milestones ({{ project.milestones.count }})</a>
   <a href="?tab=tasks" class="{% if tab == 'tasks' %}active{% endif %}">Tasks ({{ project.tasks.count }})</a>
   <a href="?tab=documents" class="{% if tab == 'documents' %}active{% endif %}">Documents ({{ project.documents.count }})</a>
+  <a href="?tab=finance" class="{% if tab == 'finance' %}active{% endif %}">Finance ({{ project.invoices.count }})</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -52,6 +53,13 @@
   <h2>Documents</h2>
   {% if documents %}<ul class="rows">{% for d in documents %}<li><a href="/admin/delivery/document/{{ d.pk }}/change/">{{ d.display_name|default:d.original_filename }} <span class="tag">{{ d.category|default:"" }} &middot; v{{ d.version }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No documents yet.</div>{% endif %}
+</div>
+
+{% elif tab == 'finance' %}
+<div class="section">
+  <h2>Invoices</h2>
+  {% if invoices %}<ul class="rows">{% for i in invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} <span class="tag {% if i.status == 'paid' %}ok{% elif i.status == 'overdue' %}danger{% endif %}">{{ i.get_status_display }} &middot; ${{ i.outstanding_amount }} outstanding</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No invoices yet. Add one via <a href="/admin/finance/invoice/add/?project={{ project.pk }}&organisation={{ project.client_organisation.pk }}">Admin</a>.</div>{% endif %}
 </div>
 {% endif %}
 

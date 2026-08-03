@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.invoice_number }} - EPMS{% endblock %}
+{% block header %}{{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ invoice.invoice_number }}</h1>
+  <div class="meta">
+    <a href="/organisations/{{ invoice.organisation.pk }}/">{{ invoice.organisation.legal_name }}</a>
+    {% if invoice.project %} &middot; <a href="/projects/{{ invoice.project.pk }}/">{{ invoice.project.project_number }}</a>{% endif %}
+    &middot; <span class="tag {% if invoice.status == 'paid' %}ok{% elif invoice.status == 'overdue' or invoice.status == 'disputed' %}danger{% elif invoice.status == 'part_paid' %}warn{% endif %}">{{ invoice.get_status_display }}</span>
+    &middot; <a href="/admin/finance/invoice/{{ invoice.pk }}/change/">Edit in Admin</a>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="num">${{ invoice.total }}</div><div class="label">Total</div></div>
+  <div class="kpi"><div class="num">${{ invoice.amount_paid }}</div><div class="label">Paid</div></div>
+  <div class="kpi"><div class="num">${{ invoice.outstanding_amount }}</div><div class="label">Outstanding</div></div>
+</div>
+
+<div class="section">
+  <h2>Details</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">PO number</div><div>{{ invoice.po_number|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Milestone</div><div>{{ invoice.milestone.milestone_type|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Invoice date</div><div>{{ invoice.invoice_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Due date</div><div>{{ invoice.due_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Tax</div><div>${{ invoice.tax }}</div></div>
+    <div class="field-row"><div class="k">Accounting reference</div><div>{{ invoice.accounting_reference|default:"—" }}</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Payments <span class="count">({{ payments|length }})</span></h2>
+  {% if payments %}
+  <ul class="rows">
+    {% for p in payments %}<li>{{ p.payment_date }} &middot; {{ p.method|default:"—" }} <span class="tag ok">${{ p.amount }}</span></li>{% endfor %}
+  </ul>
+  {% else %}<div class="empty">No payments recorded yet. Add one via <a href="/admin/finance/payment/add/?invoice={{ invoice.pk }}">Admin</a>.</div>{% endif %}
+</div>
+
+{% endblock %}

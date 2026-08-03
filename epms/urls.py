@@ -7,5 +7,6 @@ urlpatterns = [
     path('', command_centre, name='command_centre'),
     path('', include('crm.urls')),
     path('', include('delivery.urls')),
+    path('', include('finance.urls')),
     path('admin/', admin.site.urls),
 ]
