@@ -46,7 +46,7 @@
 {% elif tab == 'enquiries' %}
 <div class="section">
   <h2>Enquiries</h2>
-  {% if enquiries %}<ul class="rows">{% for e in enquiries %}<li>{{ e.enquiry_number }} <span class="tag">{{ e.get_status_display }}</span></li>{% endfor %}</ul>
+  {% if enquiries %}<ul class="rows">{% for e in enquiries %}<li><a href="/enquiries/{{ e.pk }}/">{{ e.enquiry_number }} <span class="tag">{{ e.get_status_display }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No enquiries yet.</div>{% endif %}
 </div>
 
