@@ -22,10 +22,15 @@ class MilestoneAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
-    list_display = ("title", "owner", "status", "priority", "due_date", "related_project", "tenant")
-    list_filter = ("status", "priority", "category", "tenant")
+    list_display = ("title", "owner", "assigned_team", "status", "priority", "category", "due_date", "created_by", "tenant")
+    list_filter = ("status", "priority", "category", "assigned_team", "tenant")
     search_fields = ("title", "description")
     date_hierarchy = "due_date"
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk and not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Document)

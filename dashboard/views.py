@@ -5,6 +5,7 @@ from django.db.models import Sum
 from django.shortcuts import render
 
 from tenants.models import Tenant
+from tenants.utils import get_open_todo_count
 from crm.models import Proposal
 from delivery.models import Milestone, Task
 from finance.models import Invoice
@@ -60,6 +61,7 @@ def command_centre(request):
         "follow_ups_due_count": proposals.filter(follow_up_date__lte=today).filter(
             status__in=open_proposal_statuses
         ).count(),
+        "my_open_todos_count": get_open_todo_count(request.user),
         # Today's Focus
         "deadlines_today": milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"]),
         "deadlines_soon": milestones.filter(deadline__gt=today, deadline__lte=soon).exclude(

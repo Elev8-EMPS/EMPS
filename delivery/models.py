@@ -96,13 +96,30 @@ class Task(TenantModel):
         ("high", "High"),
         ("critical", "Critical"),
     ]
+    CATEGORY_CHOICES = [
+        ("administration", "Administration"),
+        ("accounts", "Accounts"),
+        ("client_follow_up", "Client follow-up"),
+        ("proposal", "Proposal"),
+        ("project_delivery", "Project delivery"),
+        ("authority", "Authority"),
+        ("compliance", "Compliance"),
+        ("internal", "Internal"),
+        ("personal", "Personal"),
+    ]
 
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    category = models.CharField(max_length=100, blank=True)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, blank=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="normal")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="not_started")
+    created_by = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="created_tasks"
+    )
     owner = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks")
+    assigned_team = models.ForeignKey(
+        "tenants.Team", null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks"
+    )
     due_date = models.DateField(null=True, blank=True)
     reminder_at = models.DateTimeField(null=True, blank=True)
     related_project = models.ForeignKey(

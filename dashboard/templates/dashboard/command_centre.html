@@ -7,6 +7,15 @@
 {% elif not tenant %}
   <div class="section"><div class="empty">Your account isn't assigned to a tenant yet. Ask an administrator to assign one in Admin &rarr; Users.</div></div>
 {% else %}
+  {% if my_open_todos_count %}
+  <div class="section" style="border-left:3px solid var(--warn);">
+    <div style="padding:14px 18px; font-size:14px;">
+      <strong>You have {{ my_open_todos_count }} open to-do{{ my_open_todos_count|pluralize }} waiting for action.</strong>
+      <a href="/tasks/?scope=mine" style="margin-left:10px;">Go to my to-dos &rarr;</a>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="kpis">
     <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
     <div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>
@@ -14,6 +23,7 @@
     <div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>
     <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
     <div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>
+    <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
   </div>
 
   <div class="grid-2">

@@ -1,6 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.models import User
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
 
+from tenants.models import Team
 from tenants.utils import get_user_tenant
 from .models import Project, Milestone, Task, Document
 
@@ -106,11 +109,18 @@ def task_list(request):
     if priority:
         tasks = tasks.filter(priority=priority)
 
+    scope = request.GET.get("scope", "mine").strip()
+    if scope == "mine":
+        tasks = tasks.filter(
+            Q(owner=request.user) | Q(assigned_team__members=request.user)
+        ).distinct()
+    # scope == "all" -> no extra filter, tenant staff can see everything
+
     q = request.GET.get("q", "").strip()
     if q:
         tasks = tasks.filter(title__icontains=q)
 
-    tasks = tasks.select_related("owner", "related_project").order_by("due_date")
+    tasks = tasks.select_related("owner", "assigned_team", "related_project", "created_by").order_by("due_date")
 
     return render(request, "delivery/task_list.html", {
         "active_nav": "tasks",
@@ -119,7 +129,51 @@ def task_list(request):
         "q": q,
         "status": status,
         "priority": priority,
+        "scope": scope,
         "status_choices": Task.STATUS_CHOICES,
+        "priority_choices": Task.PRIORITY_CHOICES,
+    })
+
+
+@login_required
+def task_create(request):
+    tenant = get_user_tenant(request)
+
+    if request.method == "POST":
+        task = Task(
+            tenant=tenant,
+            created_by=request.user,
+            title=request.POST.get("title", "").strip(),
+            description=request.POST.get("description", "").strip(),
+            category=request.POST.get("category", ""),
+            priority=request.POST.get("priority", "normal"),
+            due_date=request.POST.get("due_date") or None,
+        )
+        project_id = request.POST.get("related_project")
+        if project_id:
+            task.related_project_id = project_id
+
+        assign_to = request.POST.get("assign_to")  # "user:<id>" or "team:<id>"
+        if assign_to and assign_to.startswith("user:"):
+            task.owner_id = int(assign_to.split(":")[1])
+        elif assign_to and assign_to.startswith("team:"):
+            task.assigned_team_id = int(assign_to.split(":")[1])
+
+        if task.title:
+            task.save()
+            return redirect("task_detail", pk=task.pk)
+
+    projects = Project.objects.filter(tenant=tenant).order_by("project_number") if tenant else Project.objects.none()
+    users = User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none()
+    teams = Team.objects.filter(tenant=tenant).order_by("name") if tenant else Team.objects.none()
+
+    return render(request, "delivery/task_create.html", {
+        "active_nav": "tasks",
+        "user_tenant": tenant,
+        "projects": projects,
+        "users": users,
+        "teams": teams,
+        "category_choices": Task.CATEGORY_CHOICES,
         "priority_choices": Task.PRIORITY_CHOICES,
     })
 
@@ -128,7 +182,8 @@ def task_list(request):
 def task_detail(request, pk):
     tenant = get_user_tenant(request)
     task = get_object_or_404(
-        Task.objects.select_related("owner", "related_project", "related_milestone"), pk=pk, tenant=tenant
+        Task.objects.select_related("owner", "related_project", "related_milestone", "created_by", "assigned_team"),
+        pk=pk, tenant=tenant,
     )
     return render(request, "delivery/task_detail.html", {
         "active_nav": "tasks",

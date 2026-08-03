@@ -16,7 +16,9 @@
   <h2>Details</h2>
   <div style="padding:18px;">
     <div class="field-row"><div class="k">Owner</div><div>{{ task.owner.username|default:"—" }}</div></div>
-    <div class="field-row"><div class="k">Category</div><div>{{ task.category|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Assigned team</div><div>{{ task.assigned_team.name|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Created by</div><div>{{ task.created_by.username|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Category</div><div>{{ task.get_category_display|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Related project</div><div>{% if task.related_project %}<a href="/projects/{{ task.related_project.pk }}/">{{ task.related_project.project_number }}</a>{% else %}—{% endif %}</div></div>
     <div class="field-row"><div class="k">Related milestone</div><div>{% if task.related_milestone %}<a href="/milestones/{{ task.related_milestone.pk }}/">{{ task.related_milestone.milestone_type }}</a>{% else %}—{% endif %}</div></div>
     <div class="field-row"><div class="k">Due date</div><div>{{ task.due_date|default:"—" }}</div></div>

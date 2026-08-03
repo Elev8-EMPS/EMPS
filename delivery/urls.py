@@ -8,6 +8,7 @@ urlpatterns = [
     path("milestones/", views.milestone_list, name="milestone_list"),
     path("milestones/<int:pk>/", views.milestone_detail, name="milestone_detail"),
     path("tasks/", views.task_list, name="task_list"),
+    path("tasks/new/", views.task_create, name="task_create"),
     path("tasks/<int:pk>/", views.task_detail, name="task_detail"),
     path("documents/", views.document_list, name="document_list"),
     path("documents/<int:pk>/", views.document_detail, name="document_detail"),

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}New To-Do - EPMS{% endblock %}
+{% block header %}New To-Do{% endblock %}
+{% block content %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">What needs to be done <span style="color:var(--danger);">*</span></label>
+        <textarea name="description" rows="3" required placeholder="Type exactly what needs to happen..." style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;" onchange="document.getElementById('title-field').value = this.value.slice(0,80)"></textarea>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Short title <span style="color:var(--danger);">*</span></label>
+        <input id="title-field" type="text" name="title" required maxlength="255" placeholder="Short summary for the list view" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project</label>
+          <select name="related_project" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for p in projects %}<option value="{{ p.pk }}">{{ p.project_number }} - {{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Assign to</label>
+          <select name="assign_to" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— Unassigned —</option>
+            <optgroup label="People">
+              {% for u in users %}<option value="user:{{ u.pk }}">{{ u.username }}</option>{% endfor %}
+            </optgroup>
+            <optgroup label="Teams">
+              {% for t in teams %}<option value="team:{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Category</label>
+          <select name="category" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for value, label in category_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Priority</label>
+          <select name="priority" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            {% for value, label in priority_choices %}<option value="{{ value }}" {% if value == 'normal' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Due date</label>
+          <input type="date" name="due_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <button type="submit" class="btn">Create to-do</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
