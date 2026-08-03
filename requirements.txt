@@ -3,3 +3,5 @@ psycopg2-binary==2.9.10
 dj-database-url==3.0.0
 whitenoise==6.11.0
 gunicorn==23.0.0
+django-otp==1.5.4
+qrcode==7.4.2
