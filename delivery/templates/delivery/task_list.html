@@ -8,7 +8,7 @@
 </div>
 
 <div class="searchbar">
-  <form method="get" style="display:flex; gap:10px;">
+  <form method="get" style="display:flex; gap:10px; flex-wrap:wrap;">
     <input type="hidden" name="scope" value="{{ scope }}">
     <input type="text" name="q" value="{{ q }}" placeholder="Search by title...">
     <select name="status" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
@@ -23,6 +23,16 @@
         <option value="{{ value }}" {% if priority == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    {% if scope == 'all' %}
+    <select name="owner" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">Anyone</option>
+      {% for u in users %}<option value="{{ u.pk }}" {% if owner_id == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>{% endfor %}
+    </select>
+    <select name="team" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">Any team</option>
+      {% for t in teams %}<option value="{{ t.pk }}" {% if team_id == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
     <button class="btn" type="submit">Filter</button>
     <a href="/tasks/new/" class="btn" style="background:var(--ok); margin-left:auto;">+ New to-do</a>
   </form>

@@ -116,6 +116,14 @@ def task_list(request):
         ).distinct()
     # scope == "all" -> no extra filter, tenant staff can see everything
 
+    owner_id = request.GET.get("owner", "").strip()
+    if owner_id:
+        tasks = tasks.filter(owner_id=owner_id)
+
+    team_id = request.GET.get("team", "").strip()
+    if team_id:
+        tasks = tasks.filter(assigned_team_id=team_id)
+
     q = request.GET.get("q", "").strip()
     if q:
         tasks = tasks.filter(title__icontains=q)
@@ -130,8 +138,12 @@ def task_list(request):
         "status": status,
         "priority": priority,
         "scope": scope,
+        "owner_id": owner_id,
+        "team_id": team_id,
         "status_choices": Task.STATUS_CHOICES,
         "priority_choices": Task.PRIORITY_CHOICES,
+        "users": User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none(),
+        "teams": Team.objects.filter(tenant=tenant).order_by("name") if tenant else Team.objects.none(),
     })
 
 
