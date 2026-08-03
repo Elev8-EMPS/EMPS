@@ -18,6 +18,7 @@
   <a href="?tab=tasks" class="{% if tab == 'tasks' %}active{% endif %}">Tasks ({{ project.tasks.count }})</a>
   <a href="?tab=documents" class="{% if tab == 'documents' %}active{% endif %}">Documents ({{ project.documents.count }})</a>
   <a href="?tab=finance" class="{% if tab == 'finance' %}active{% endif %}">Finance ({{ project.invoices.count }})</a>
+  <a href="?tab=communications" class="{% if tab == 'communications' %}active{% endif %}">Communications ({{ project.communications.count }})</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -66,6 +67,18 @@
   <h2>Invoices</h2>
   {% if invoices %}<ul class="rows">{% for i in invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} <span class="tag {% if i.status == 'paid' %}ok{% elif i.status == 'overdue' %}danger{% endif %}">{{ i.get_status_display }} &middot; ${{ i.outstanding_amount }} outstanding</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No invoices yet. Add one via <a href="/admin/finance/invoice/add/?project={{ project.pk }}&organisation={{ project.client_organisation.pk }}">Admin</a>.</div>{% endif %}
+</div>
+
+{% elif tab == 'communications' %}
+<div class="section" style="text-align:right;">
+  <div style="padding:14px 18px;">
+    <a class="btn" style="background:var(--ok);" href="/communications/new/?project={{ project.pk }}">+ Log communication</a>
+  </div>
+</div>
+<div class="section">
+  <h2>Communications</h2>
+  {% if communications %}<ul class="rows">{% for c in communications %}<li><a href="/communications/{{ c.pk }}/">{{ c.subject|default:c.get_communication_type_display }} <span class="tag">{{ c.get_communication_type_display }} &middot; {{ c.occurred_at|date:"Y-m-d" }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No communications logged for this project yet.</div>{% endif %}
 </div>
 {% endif %}
 

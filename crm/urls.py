@@ -9,4 +9,7 @@ urlpatterns = [
     path("enquiries/<int:pk>/", views.enquiry_detail, name="enquiry_detail"),
     path("proposals/", views.proposal_list, name="proposal_list"),
     path("proposals/<int:pk>/", views.proposal_detail, name="proposal_detail"),
+    path("communications/", views.communication_list, name="communication_list"),
+    path("communications/new/", views.communication_create, name="communication_create"),
+    path("communications/<int:pk>/", views.communication_detail, name="communication_detail"),
 ]

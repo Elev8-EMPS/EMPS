@@ -125,3 +125,46 @@ class Proposal(TenantModel):
 
     def __str__(self):
         return self.proposal_number
+
+
+class Communication(TenantModel):
+    """
+    Blueprint section 17 - Email and communications module.
+    Manually logged for now (emails and calls); designed so that a
+    future Outlook/Gmail integration can populate the same fields
+    automatically instead of replacing this model.
+    """
+
+    TYPE_CHOICES = [
+        ("email", "Email"),
+        ("phone_call", "Phone call"),
+        ("meeting", "Meeting"),
+        ("note", "Note"),
+    ]
+    DIRECTION_CHOICES = [
+        ("outgoing", "Outgoing"),
+        ("incoming", "Incoming"),
+    ]
+
+    communication_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="note")
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True)
+    subject = models.CharField(max_length=255, blank=True)
+    body = models.TextField(blank=True)
+    organisation = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.SET_NULL, related_name="communications"
+    )
+    contact = models.ForeignKey(Contact, null=True, blank=True, on_delete=models.SET_NULL)
+    related_project = models.ForeignKey(
+        "delivery.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="communications"
+    )
+    sender = models.CharField(max_length=255, blank=True)
+    recipients = models.CharField(max_length=500, blank=True)
+    occurred_at = models.DateTimeField()
+    logged_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at"]
+
+    def __str__(self):
+        return self.subject or f"{self.get_communication_type_display()} on {self.occurred_at:%Y-%m-%d}"

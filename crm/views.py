@@ -1,8 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from tenants.utils import get_user_tenant
-from .models import Organisation, Proposal, Enquiry
+from .models import Organisation, Proposal, Enquiry, Communication
 
 
 @login_required
@@ -126,4 +127,106 @@ def enquiry_detail(request, pk):
         "user_tenant": tenant,
         "enquiry": enquiry,
         "proposals": proposals,
+    })
+
+
+@login_required
+def communication_list(request):
+    tenant = get_user_tenant(request)
+    comms = Communication.objects.filter(tenant=tenant) if tenant else Communication.objects.none()
+
+    comm_type = request.GET.get("type", "").strip()
+    if comm_type:
+        comms = comms.filter(communication_type=comm_type)
+
+    project_id = request.GET.get("project", "").strip()
+    if project_id:
+        comms = comms.filter(related_project_id=project_id)
+
+    q = request.GET.get("q", "").strip()
+    if q:
+        comms = comms.filter(subject__icontains=q) | comms.filter(body__icontains=q)
+
+    comms = comms.select_related("organisation", "related_project", "logged_by")
+
+    from delivery.models import Project
+    projects = Project.objects.filter(tenant=tenant).order_by("project_number") if tenant else Project.objects.none()
+
+    return render(request, "crm/communication_list.html", {
+        "active_nav": "communications",
+        "user_tenant": tenant,
+        "communications": comms,
+        "q": q,
+        "comm_type": comm_type,
+        "project_id": project_id,
+        "type_choices": Communication.TYPE_CHOICES,
+        "projects": projects,
+    })
+
+
+@login_required
+def communication_create(request):
+    tenant = get_user_tenant(request)
+
+    if request.method == "POST":
+        occurred_at_raw = request.POST.get("occurred_at")
+        if occurred_at_raw:
+            naive = timezone.datetime.fromisoformat(occurred_at_raw)
+            occurred_at = timezone.make_aware(naive) if timezone.is_naive(naive) else naive
+        else:
+            occurred_at = timezone.now()
+        comm = Communication(
+            tenant=tenant,
+            logged_by=request.user,
+            communication_type=request.POST.get("communication_type", "note"),
+            direction=request.POST.get("direction", ""),
+            subject=request.POST.get("subject", "").strip(),
+            body=request.POST.get("body", "").strip(),
+            sender=request.POST.get("sender", "").strip(),
+            recipients=request.POST.get("recipients", "").strip(),
+            occurred_at=occurred_at,
+        )
+        org_id = request.POST.get("organisation")
+        if org_id:
+            comm.organisation_id = org_id
+        contact_id = request.POST.get("contact")
+        if contact_id:
+            comm.contact_id = contact_id
+        project_id = request.POST.get("related_project")
+        if project_id:
+            comm.related_project_id = project_id
+
+        if comm.body or comm.subject:
+            comm.save()
+            return redirect("communication_detail", pk=comm.pk)
+
+    from delivery.models import Project
+    organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name") if tenant else Organisation.objects.none()
+    projects = Project.objects.filter(tenant=tenant).order_by("project_number") if tenant else Project.objects.none()
+
+    preselect_project = request.GET.get("project", "")
+
+    return render(request, "crm/communication_create.html", {
+        "active_nav": "communications",
+        "user_tenant": tenant,
+        "organisations": organisations,
+        "projects": projects,
+        "type_choices": Communication.TYPE_CHOICES,
+        "direction_choices": Communication.DIRECTION_CHOICES,
+        "preselect_project": preselect_project,
+        "now": timezone.now(),
+    })
+
+
+@login_required
+def communication_detail(request, pk):
+    tenant = get_user_tenant(request)
+    comm = get_object_or_404(
+        Communication.objects.select_related("organisation", "contact", "related_project", "logged_by"),
+        pk=pk, tenant=tenant,
+    )
+    return render(request, "crm/communication_detail.html", {
+        "active_nav": "communications",
+        "user_tenant": tenant,
+        "comm": comm,
     })

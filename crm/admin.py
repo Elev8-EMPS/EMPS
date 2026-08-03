@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
-from .models import Organisation, Contact, Enquiry, Proposal
+from .models import Organisation, Contact, Enquiry, Proposal, Communication
 
 
 @admin.register(Organisation)
@@ -33,3 +33,16 @@ class ProposalAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_filter = ("status", "tenant")
     search_fields = ("proposal_number", "organisation__legal_name")
     date_hierarchy = "issue_date"
+
+
+@admin.register(Communication)
+class CommunicationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+    list_display = ("subject", "communication_type", "direction", "related_project", "organisation", "occurred_at", "logged_by", "tenant")
+    list_filter = ("communication_type", "direction", "tenant")
+    search_fields = ("subject", "body", "organisation__legal_name")
+    date_hierarchy = "occurred_at"
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk and not obj.logged_by:
+            obj.logged_by = request.user
+        super().save_model(request, obj, form, change)

@@ -55,6 +55,7 @@ def project_detail(request, pk):
         "invoices": project.invoices.order_by("-due_date") if tab == "finance" else None,
         "open_todos": project.tasks.exclude(status__in=["completed", "cancelled"]).order_by("due_date")
         if tab == "overview" else None,
+        "communications": project.communications.order_by("-occurred_at") if tab == "communications" else None,
     })
 
 
