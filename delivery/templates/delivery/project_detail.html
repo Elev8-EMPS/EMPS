@@ -204,9 +204,15 @@
     <li>
       <a href="/stakeholders/{{ s.pk }}/edit/" style="display:block;">
         <strong>{{ s.get_role_display }}</strong>: {{ s.display_name }}{% if s.contact %} <span class="tag">Linked contact</span>{% endif %}
-        {% if s.external_company %}({{ s.external_company }}){% endif %}
-        {% if s.external_email %}<span class="tag">{{ s.external_email }}</span>{% endif %}
-        {% if s.external_phone %}<span class="tag">{{ s.external_phone }}</span>{% endif %}
+        {% if s.contact %}
+          {% if s.contact.organisation %}({{ s.contact.organisation.legal_name }}){% endif %}
+          {% if s.contact.email %}<span class="tag">{{ s.contact.email }}</span>{% endif %}
+          {% if s.contact.mobile %}<span class="tag">{{ s.contact.mobile }}</span>{% endif %}
+        {% else %}
+          {% if s.external_company %}({{ s.external_company }}){% endif %}
+          {% if s.external_email %}<span class="tag">{{ s.external_email }}</span>{% endif %}
+          {% if s.external_phone %}<span class="tag">{{ s.external_phone }}</span>{% endif %}
+        {% endif %}
         {% if s.notes %}<div style="margin-top:4px; font-size:13px; color:var(--muted);">{{ s.notes }}</div>{% endif %}
       </a>
     </li>
@@ -251,7 +257,7 @@
         </div>
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Existing contact (optional)</label>
-          <select name="contact" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <select name="contact" id="stakeholder-contact-select" onchange="toggleStakeholderExternalFields(this)" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
             <option value="">— None, use fields below —</option>
             {% for c in available_contacts %}<option value="{{ c.pk }}">{{ c.first_name }} {{ c.last_name }}{% if c.organisation %} ({{ c.organisation.legal_name }}){% endif %}</option>{% endfor %}
           </select>
@@ -259,16 +265,27 @@
       </div>
       <p style="font-size:13px; color:var(--muted); margin:-8px 0 12px;">If this person isn't in your Contacts yet (e.g. an external architect or builder), just fill in the fields below instead:</p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-        <input type="text" name="external_name" placeholder="Name" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-        <input type="text" name="external_company" placeholder="Company" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-        <input type="email" name="external_email" placeholder="Email" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-        <input type="text" name="external_phone" placeholder="Phone" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_name" placeholder="Name" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_company" placeholder="Company" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="email" name="external_email" placeholder="Email" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_phone" placeholder="Phone" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
       </div>
       <textarea name="notes" rows="2" placeholder="Notes (optional)" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:14px;"></textarea>
       <button type="submit" class="btn">Add stakeholder</button>
     </form>
   </div>
 </div>
+
+<script>
+function toggleStakeholderExternalFields(select) {
+  var fields = document.querySelectorAll('.stakeholder-external-field');
+  var contactChosen = !!select.value;
+  fields.forEach(function(f) {
+    f.disabled = contactChosen;
+    if (contactChosen) f.value = '';
+  });
+}
+</script>
 
 {% endif %}
 
