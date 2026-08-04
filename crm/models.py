@@ -53,7 +53,9 @@ class Organisation(TenantModel):
 class Contact(TenantModel):
     """Blueprint section 10 - Contacts module."""
 
-    organisation = models.ForeignKey(Organisation, on_delete=models.CASCADE, related_name="contacts")
+    organisation = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.CASCADE, related_name="contacts"
+    )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     job_title = models.CharField(max_length=150, blank=True)

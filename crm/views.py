@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -256,28 +257,61 @@ def communication_detail(request, pk):
 @login_required
 def contact_list(request):
     tenant = get_user_tenant(request)
-    contacts = Contact.objects.filter(tenant=tenant) if tenant else Contact.objects.none()
+    if not tenant:
+        return render(request, "crm/contact_list.html", {
+            "active_nav": "contacts", "user_tenant": tenant, "org_groups": [], "unaffiliated": [],
+            "q": "", "org_id": "", "organisations": Organisation.objects.none(),
+        })
 
     q = request.GET.get("q", "").strip()
-    if q:
-        contacts = contacts.filter(first_name__icontains=q) | contacts.filter(
-            last_name__icontains=q
-        ) | contacts.filter(email__icontains=q) | contacts.filter(mobile__icontains=q)
-
     org_id = request.GET.get("organisation", "").strip()
-    if org_id:
-        contacts = contacts.filter(organisation_id=org_id)
 
-    contacts = contacts.select_related("organisation").order_by("first_name", "last_name")
-    organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name") if tenant else Organisation.objects.none()
+    # Which organisations are "in scope" - either directly matched by name,
+    # or the employer of a contact matched by name/email/mobile. Either way,
+    # we then show that organisation's FULL contact list, not just the hit.
+    org_ids = set()
+    if org_id:
+        org_ids.add(int(org_id))
+    elif q:
+        org_ids.update(
+            Organisation.objects.filter(tenant=tenant, legal_name__icontains=q).values_list("id", flat=True)
+        )
+        org_ids.update(
+            Contact.objects.filter(tenant=tenant, organisation__isnull=False)
+            .filter(
+                Q(first_name__icontains=q) | Q(last_name__icontains=q) |
+                Q(email__icontains=q) | Q(mobile__icontains=q)
+            )
+            .values_list("organisation_id", flat=True)
+        )
+    else:
+        org_ids.update(Organisation.objects.filter(tenant=tenant).values_list("id", flat=True))
+
+    organisations = Organisation.objects.filter(tenant=tenant, id__in=org_ids).order_by("legal_name")
+    org_groups = [
+        {"organisation": org, "contacts": org.contacts.order_by("first_name", "last_name")}
+        for org in organisations
+    ]
+
+    # Contacts with no organisation at all, matched by search (or shown when browsing everything)
+    unaffiliated_qs = Contact.objects.filter(tenant=tenant, organisation__isnull=True)
+    if q and not org_id:
+        unaffiliated_qs = unaffiliated_qs.filter(
+            Q(first_name__icontains=q) | Q(last_name__icontains=q) |
+            Q(email__icontains=q) | Q(mobile__icontains=q)
+        )
+    elif org_id:
+        unaffiliated_qs = Contact.objects.none()
+    unaffiliated = unaffiliated_qs.order_by("first_name", "last_name")
 
     return render(request, "crm/contact_list.html", {
         "active_nav": "contacts",
         "user_tenant": tenant,
-        "contacts": contacts,
+        "org_groups": org_groups,
+        "unaffiliated": unaffiliated,
         "q": q,
         "org_id": org_id,
-        "organisations": organisations,
+        "organisations": Organisation.objects.filter(tenant=tenant).order_by("legal_name"),
     })
 
 
