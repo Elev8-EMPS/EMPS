@@ -22,6 +22,10 @@ class Project(TenantModel):
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True)
     client_organisation = models.ForeignKey(Organisation, on_delete=models.PROTECT, related_name="projects")
+    billing_organisation = models.ForeignKey(
+        Organisation, null=True, blank=True, on_delete=models.SET_NULL, related_name="billed_projects",
+        help_text="Who actually gets invoiced, if different from the client organisation.",
+    )
     primary_contact = models.ForeignKey(Contact, null=True, blank=True, on_delete=models.SET_NULL)
     project_manager = models.ForeignKey(
         "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="managed_projects"
@@ -204,3 +208,45 @@ class ProjectChecklistItem(TenantModel):
 
     def __str__(self):
         return self.text
+
+
+class ProjectStakeholder(TenantModel):
+    """
+    Every person tied to a project, in one place - the client
+    contact, billing contact, architect, builder, consultant, etc.
+    Can link to an existing Contact record, OR just capture a name/
+    email for someone external who isn't in the CRM yet (very common
+    for architects, builders, and other third parties).
+    """
+
+    ROLE_CHOICES = [
+        ("requesting_contact", "Requesting contact"),
+        ("client_contact", "Client contact"),
+        ("billing_contact", "Billing contact"),
+        ("architect", "Architect"),
+        ("builder", "Builder"),
+        ("designer", "Designer"),
+        ("consultant", "Consultant"),
+        ("authority_contact", "Authority contact"),
+        ("site_contact", "Site contact"),
+        ("other", "Other"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="stakeholders")
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="other")
+    contact = models.ForeignKey(
+        "crm.Contact", null=True, blank=True, on_delete=models.SET_NULL, related_name="project_stakeholder_roles"
+    )
+    external_name = models.CharField(max_length=255, blank=True, help_text="If not an existing Contact.")
+    external_company = models.CharField(max_length=255, blank=True)
+    external_email = models.EmailField(blank=True)
+    external_phone = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True)
+
+    def display_name(self):
+        if self.contact:
+            return f"{self.contact.first_name} {self.contact.last_name}"
+        return self.external_name or "(unnamed)"
+
+    def __str__(self):
+        return f"{self.get_role_display()}: {self.display_name()}"

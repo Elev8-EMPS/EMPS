@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from tenants.models import Team, Modality, ChecklistItemTemplate
 from tenants.utils import get_user_tenant
-from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem
+from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder
 
 
 def _generate_checklist_items(project, tenant, modality_ids):
@@ -129,6 +129,23 @@ def project_detail(request, pk):
             ProjectChecklistItem.objects.create(tenant=tenant, project=project, text=text)
         return redirect(f"/projects/{project.pk}/?tab=checklist")
 
+    if request.method == "POST" and request.POST.get("action") == "add_stakeholder":
+        stakeholder = ProjectStakeholder(
+            tenant=tenant, project=project,
+            role=request.POST.get("role", "other"),
+            external_name=request.POST.get("external_name", "").strip(),
+            external_company=request.POST.get("external_company", "").strip(),
+            external_email=request.POST.get("external_email", "").strip(),
+            external_phone=request.POST.get("external_phone", "").strip(),
+            notes=request.POST.get("notes", "").strip(),
+        )
+        contact_id = request.POST.get("contact")
+        if contact_id:
+            stakeholder.contact_id = contact_id
+        if stakeholder.contact_id or stakeholder.external_name:
+            stakeholder.save()
+        return redirect(f"/projects/{project.pk}/?tab=people")
+
     tab = request.GET.get("tab", "overview")
 
     checklist_items = None
@@ -152,6 +169,13 @@ def project_detail(request, pk):
         done = project.checklist_items.filter(is_done=True).count()
         checklist_summary = {"total": total, "done": done}
 
+    stakeholders = None
+    available_contacts = None
+    if tab == "people":
+        stakeholders = project.stakeholders.select_related("contact").order_by("role")
+        from crm.models import Contact
+        available_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name") if tenant else Contact.objects.none()
+
     return render(request, "delivery/project_detail.html", {
         "active_nav": "projects",
         "user_tenant": tenant,
@@ -168,6 +192,8 @@ def project_detail(request, pk):
         "checklist_progress": checklist_progress,
         "checklist_summary": checklist_summary,
         "available_optional_items": available_optional_items,
+        "stakeholders": stakeholders,
+        "available_contacts": available_contacts,
         "available_modalities": Modality.objects.filter(tenant=tenant).exclude(
             id__in=project.modalities.values_list("id", flat=True)
         ) if tab == "checklist" else None,

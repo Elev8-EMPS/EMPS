@@ -20,6 +20,7 @@
   <a href="?tab=finance" class="{% if tab == 'finance' %}active{% endif %}">Finance ({{ project.invoices.count }})</a>
   <a href="?tab=communications" class="{% if tab == 'communications' %}active{% endif %}">Communications ({{ project.communications.count }})</a>
   <a href="?tab=checklist" class="{% if tab == 'checklist' %}active{% endif %}">Checklist ({{ project.checklist_items.count }})</a>
+  <a href="?tab=people" class="{% if tab == 'people' %}active{% endif %}">People ({{ project.stakeholders.count }})</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -183,6 +184,77 @@
   </div>
 </div>
 {% endif %}
+
+{% elif tab == 'people' %}
+
+<div class="section">
+  <h2>Organisations</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Client</div><div><a href="/organisations/{{ project.client_organisation.pk }}/">{{ project.client_organisation.legal_name }}</a></div></div>
+    <div class="field-row"><div class="k">Billing entity</div><div>{% if project.billing_organisation %}<a href="/organisations/{{ project.billing_organisation.pk }}/">{{ project.billing_organisation.legal_name }}</a>{% else %}Same as client{% endif %}</div></div>
+    {% if project.original_proposal %}<div class="field-row"><div class="k">Requested via</div><div><a href="/proposals/{{ project.original_proposal.pk }}/">{{ project.original_proposal.proposal_number }}</a> ({{ project.original_proposal.organisation.legal_name }})</div></div>{% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h2>Stakeholders</h2>
+  {% if stakeholders %}
+  <ul class="rows">
+    {% for s in stakeholders %}
+    <li>
+      <strong>{{ s.get_role_display }}</strong>: {{ s.display_name }}
+      {% if s.external_company %}({{ s.external_company }}){% endif %}
+      {% if s.external_email %}<span class="tag">{{ s.external_email }}</span>{% endif %}
+      {% if s.external_phone %}<span class="tag">{{ s.external_phone }}</span>{% endif %}
+      {% if s.notes %}<div style="margin-top:4px; font-size:13px; color:var(--muted);">{{ s.notes }}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<div class="empty">No stakeholders added yet.</div>{% endif %}
+</div>
+
+<div class="section">
+  <h2>Add a stakeholder</h2>
+  <div style="padding:18px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_stakeholder">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Role</label>
+          <select name="role" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="requesting_contact">Requesting contact</option>
+            <option value="client_contact">Client contact</option>
+            <option value="billing_contact">Billing contact</option>
+            <option value="architect">Architect</option>
+            <option value="builder">Builder</option>
+            <option value="designer">Designer</option>
+            <option value="consultant">Consultant</option>
+            <option value="authority_contact">Authority contact</option>
+            <option value="site_contact">Site contact</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Existing contact (optional)</label>
+          <select name="contact" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None, use fields below —</option>
+            {% for c in available_contacts %}<option value="{{ c.pk }}">{{ c.first_name }} {{ c.last_name }}{% if c.organisation %} ({{ c.organisation.legal_name }}){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <p style="font-size:13px; color:var(--muted); margin:-8px 0 12px;">If this person isn't in your Contacts yet (e.g. an external architect or builder), just fill in the fields below instead:</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <input type="text" name="external_name" placeholder="Name" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_company" placeholder="Company" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="email" name="external_email" placeholder="Email" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_phone" placeholder="Phone" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <textarea name="notes" rows="2" placeholder="Notes (optional)" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:14px;"></textarea>
+      <button type="submit" class="btn">Add stakeholder</button>
+    </form>
+  </div>
+</div>
 
 {% endif %}
 
