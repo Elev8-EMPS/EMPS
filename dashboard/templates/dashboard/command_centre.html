@@ -20,7 +20,7 @@
     <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
     <div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>
     <div class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></div>
-    <div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>
+    {% if can_view_financials %}<div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
     <div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>
     <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
@@ -54,6 +54,7 @@
         <h2>Proposal follow-ups due <span class="count">({{ proposal_followups_due|length }})</span></h2>
         {% if proposal_followups_due %}<ul class="rows">{% for f in proposal_followups_due %}<li><a href="/proposals/{{ f.proposal.pk }}/">{{ f.proposal.proposal_number }} - {{ f.proposal.organisation.legal_name }}<span class="tag warn">Follow-up #{{ f.follow_up_number }} &middot; {{ f.due_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
       </div>
+      {% if can_view_financials %}
       <div class="section">
         <h2>Invoice follow-ups due <span class="count">({{ invoice_followups_due|length }})</span></h2>
         {% if invoice_followups_due %}<ul class="rows">{% for f in invoice_followups_due %}<li><a href="/invoices/{{ f.invoice.pk }}/">{{ f.invoice.invoice_number }} - {{ f.invoice.organisation.legal_name }}<span class="tag warn">Follow-up #{{ f.follow_up_number }} &middot; {{ f.due_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No invoice follow-ups due.</div>{% endif %}
@@ -62,6 +63,7 @@
         <h2>Overdue invoices <span class="count">({{ overdue_invoices|length }})</span></h2>
         {% if overdue_invoices %}<ul class="rows">{% for i in overdue_invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} - {{ i.organisation.legal_name }}<span class="tag danger">${{ i.outstanding_amount }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue invoices.</div>{% endif %}
       </div>
+      {% endif %}
       <div class="section">
         <h2>High priority tasks <span class="count">({{ high_priority_tasks|length }})</span></h2>
         {% if high_priority_tasks %}<ul class="rows">{% for t in high_priority_tasks %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }}<span class="tag {% if t.priority == 'critical' %}danger{% else %}warn{% endif %}">{{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No high priority tasks open.</div>{% endif %}

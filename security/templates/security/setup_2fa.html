@@ -3,14 +3,6 @@
 {% block header %}Two-Factor Authentication{% endblock %}
 {% block content %}
 
-{% if messages %}
-{% for message in messages %}
-<div class="section" style="border-left:3px solid {% if message.tags == 'error' %}var(--danger){% else %}var(--ok){% endif %};">
-  <div style="padding:14px 18px; font-size:14px;">{{ message }}</div>
-</div>
-{% endfor %}
-{% endif %}
-
 {% if new_backup_codes %}
 <div class="section" style="border-left:3px solid var(--warn);">
   <h2>Your backup codes - save these now</h2>

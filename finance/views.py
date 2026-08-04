@@ -1,13 +1,18 @@
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.utils import get_user_tenant
+from tenants.utils import get_user_tenant, can_view_financials
 from .models import Invoice, InvoiceFollowUp
 
 
 @login_required
 def invoice_list(request):
+    if not can_view_financials(request.user):
+        messages.error(request, "You don't have permission to view financial information.")
+        return redirect("command_centre")
+
     tenant = get_user_tenant(request)
     invoices = Invoice.objects.filter(tenant=tenant) if tenant else Invoice.objects.none()
 
@@ -35,6 +40,10 @@ def invoice_list(request):
 
 @login_required
 def invoice_detail(request, pk):
+    if not can_view_financials(request.user):
+        messages.error(request, "You don't have permission to view financial information.")
+        return redirect("command_centre")
+
     tenant = get_user_tenant(request)
     invoice = get_object_or_404(
         Invoice.objects.select_related("organisation", "project", "milestone"),

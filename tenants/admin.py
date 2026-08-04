@@ -31,7 +31,7 @@ class ChecklistItemTemplateAdmin(TenantScopedAdmin, admin.ModelAdmin):
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
-    verbose_name_plural = "Tenant assignment"
+    verbose_name_plural = "Tenant & role"
 
 
 class TenantAwareUserAdmin(UserAdmin):

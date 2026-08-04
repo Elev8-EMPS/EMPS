@@ -73,7 +73,9 @@
     <a href="/milestones/" class="{% if active_nav == 'milestones' %}active{% endif %}">Milestones</a>
     <a href="/tasks/" class="{% if active_nav == 'tasks' %}active{% endif %}">Tasks{% if my_open_todos_count %} <span style="background:var(--danger, #dc2626); color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; margin-left:4px;">{{ my_open_todos_count }}</span>{% endif %}</a>
     <a href="/documents/" class="{% if active_nav == 'documents' %}active{% endif %}">Documents</a>
+    {% if can_view_financials %}
     <a href="/invoices/" class="{% if active_nav == 'finance' %}active{% endif %}">Finance</a>
+    {% endif %}
     <a href="/admin/">Administration</a>
     {% if request.user.is_authenticated %}
     <div class="tenant">
@@ -89,6 +91,13 @@
       <div class="user">{% if user_tenant %}{{ user_tenant.name }}{% endif %}</div>
     </header>
     <main>
+      {% if messages %}
+      {% for message in messages %}
+      <div class="section" style="border-left:3px solid {% if message.tags == 'error' %}var(--danger){% else %}var(--ok){% endif %};">
+        <div style="padding:14px 18px; font-size:14px;">{{ message }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>

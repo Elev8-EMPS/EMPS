@@ -76,11 +76,15 @@
 </div>
 
 {% elif tab == 'finance' %}
+{% if can_view_financials %}
 <div class="section">
   <h2>Invoices</h2>
   {% if invoices %}<ul class="rows">{% for i in invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} <span class="tag {% if i.status == 'paid' %}ok{% elif i.status == 'overdue' %}danger{% endif %}">{{ i.get_status_display }} &middot; ${{ i.outstanding_amount }} outstanding</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No invoices yet. Add one via <a href="/admin/finance/invoice/add/?project={{ project.pk }}&organisation={{ project.client_organisation.pk }}">Admin</a>.</div>{% endif %}
 </div>
+{% else %}
+<div class="section"><div class="empty">You don't have permission to view financial information.</div></div>
+{% endif %}
 
 {% elif tab == 'communications' %}
 <div class="section" style="text-align:right;">

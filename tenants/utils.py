@@ -1,6 +1,30 @@
 from django.db import models
 
 
+FINANCIAL_ROLES = {"company_admin", "director", "accounts"}
+CONFIDENTIAL_ROLES = {"company_admin", "director"}
+
+
+def get_user_role(user):
+    if user.is_superuser:
+        return "company_admin"
+    profile = getattr(user, "profile", None)
+    return profile.role if profile else ""
+
+
+def can_view_financials(user):
+    """Invoices, payments, fee amounts on proposals - restricted to
+    admin, director, and accounts roles, per the blueprint's rule
+    that financial data isn't visible to everyone by default."""
+    return get_user_role(user) in FINANCIAL_ROLES
+
+
+def can_view_confidential(user):
+    """Employee records, confidential company documents - admin and
+    director only."""
+    return get_user_role(user) in CONFIDENTIAL_ROLES
+
+
 def get_user_tenant(request):
     """
     Shared logic for 'which tenant's data should this request see'.

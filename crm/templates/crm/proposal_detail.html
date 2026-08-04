@@ -17,7 +17,7 @@
   <div style="padding:18px;">
     <div class="field-row"><div class="k">Contact</div><div>{% if proposal.contact %}{{ proposal.contact.first_name }} {{ proposal.contact.last_name }}{% else %}—{% endif %}</div></div>
     <div class="field-row"><div class="k">Linked enquiry</div><div>{{ proposal.enquiry.enquiry_number|default:"—" }}</div></div>
-    <div class="field-row"><div class="k">Fee</div><div>{% if proposal.fee_amount %}${{ proposal.fee_amount }}{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Fee</div><div>{% if can_view_financials %}{% if proposal.fee_amount %}${{ proposal.fee_amount }}{% else %}—{% endif %}{% else %}Not visible to your role{% endif %}</div></div>
     <div class="field-row"><div class="k">Version</div><div>{{ proposal.version }}</div></div>
     <div class="field-row"><div class="k">Issue date</div><div>{{ proposal.issue_date|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Validity period</div><div>{{ proposal.validity_period_days }} days</div></div>

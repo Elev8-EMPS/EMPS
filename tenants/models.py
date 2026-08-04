@@ -43,8 +43,21 @@ class UserProfile(models.Model):
     that tenant's records.
     """
 
+    ROLE_CHOICES = [
+        ("company_admin", "Company Administrator"),
+        ("director", "Director"),
+        ("project_manager", "Project Manager"),
+        ("engineer", "Engineer"),
+        ("administration", "Administration"),
+        ("accounts", "Accounts"),
+        ("external_consultant", "External Consultant"),
+        ("client_user", "Client User"),
+        ("read_only", "Read Only"),
+    ]
+
     user = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="profile")
     tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="users")
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, blank=True)
 
     def __str__(self):
         return f"{self.user.username} -> {self.tenant.name if self.tenant else 'no tenant'}"

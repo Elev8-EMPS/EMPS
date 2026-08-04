@@ -23,7 +23,7 @@
     <td><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }}</a></td>
     <td>{{ p.organisation.legal_name }}</td>
     <td><span class="tag {% if p.status == 'accepted' %}ok{% elif p.status == 'declined' or p.status == 'lost' %}danger{% elif p.status == 'follow_up_due' %}warn{% endif %}">{{ p.get_status_display }}</span></td>
-    <td>{% if p.fee_amount %}${{ p.fee_amount }}{% else %}—{% endif %}</td>
+    <td>{% if can_view_financials %}{% if p.fee_amount %}${{ p.fee_amount }}{% else %}—{% endif %}{% else %}—{% endif %}</td>
     <td>{{ p.issue_date|default:"—" }}</td>
     <td>{{ p.follow_up_date|default:"—" }}</td>
   </tr>
