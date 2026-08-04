@@ -254,6 +254,34 @@ def communication_detail(request, pk):
 
 
 @login_required
+def contact_list(request):
+    tenant = get_user_tenant(request)
+    contacts = Contact.objects.filter(tenant=tenant) if tenant else Contact.objects.none()
+
+    q = request.GET.get("q", "").strip()
+    if q:
+        contacts = contacts.filter(first_name__icontains=q) | contacts.filter(
+            last_name__icontains=q
+        ) | contacts.filter(email__icontains=q) | contacts.filter(mobile__icontains=q)
+
+    org_id = request.GET.get("organisation", "").strip()
+    if org_id:
+        contacts = contacts.filter(organisation_id=org_id)
+
+    contacts = contacts.select_related("organisation").order_by("first_name", "last_name")
+    organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name") if tenant else Organisation.objects.none()
+
+    return render(request, "crm/contact_list.html", {
+        "active_nav": "contacts",
+        "user_tenant": tenant,
+        "contacts": contacts,
+        "q": q,
+        "org_id": org_id,
+        "organisations": organisations,
+    })
+
+
+@login_required
 def contact_detail(request, pk):
     tenant = get_user_tenant(request)
     contact = get_object_or_404(Contact.objects.select_related("organisation"), pk=pk, tenant=tenant)

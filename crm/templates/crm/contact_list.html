@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Contacts - EPMS{% endblock %}
+{% block header %}Contacts{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email, or mobile...">
+    <select name="organisation" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All organisations</option>
+      {% for o in organisations %}<option value="{{ o.pk }}" {% if org_id == o.pk|stringformat:"s" %}selected{% endif %}>{{ o.legal_name }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter</button>
+    <a href="/admin/crm/contact/add/" class="btn" style="background:var(--ok); margin-left:auto;">+ New contact</a>
+  </form>
+</div>
+
+{% if contacts %}
+<table class="list">
+  <tr><th>Name</th><th>Organisation</th><th>Job title</th><th>Email</th><th>Mobile</th></tr>
+  {% for c in contacts %}
+  <tr>
+    <td><a href="/contacts/{{ c.pk }}/">{{ c.first_name }} {{ c.last_name }}</a></td>
+    <td>{% if c.organisation %}<a href="/organisations/{{ c.organisation.pk }}/">{{ c.organisation.legal_name }}</a>{% else %}—{% endif %}</td>
+    <td>{{ c.job_title|default:"—" }}</td>
+    <td>{{ c.email|default:"—" }}</td>
+    <td>{{ c.mobile|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q or org_id %}No contacts match these filters.{% else %}No contacts yet. <a href="/admin/crm/contact/add/">Add one</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}
