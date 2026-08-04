@@ -39,7 +39,7 @@
 {% elif tab == 'contacts' %}
 <div class="section">
   <h2>Contacts</h2>
-  {% if contacts %}<ul class="rows">{% for c in contacts %}<li>{{ c.first_name }} {{ c.last_name }} <span class="tag">{{ c.job_title|default:"" }}</span></li>{% endfor %}</ul>
+  {% if contacts %}<ul class="rows">{% for c in contacts %}<li><a href="/contacts/{{ c.pk }}/">{{ c.first_name }} {{ c.last_name }} <span class="tag">{{ c.job_title|default:"" }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No contacts yet. Add one via <a href="/admin/crm/contact/add/">Admin</a>.</div>{% endif %}
 </div>
 

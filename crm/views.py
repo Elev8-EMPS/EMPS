@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from tenants.utils import get_user_tenant
-from .models import Organisation, Proposal, Enquiry, Communication
+from .models import Organisation, Proposal, Enquiry, Communication, Contact
 
 
 @login_required
@@ -250,4 +250,16 @@ def communication_detail(request, pk):
         "active_nav": "communications",
         "user_tenant": tenant,
         "comm": comm,
+    })
+
+
+@login_required
+def contact_detail(request, pk):
+    tenant = get_user_tenant(request)
+    contact = get_object_or_404(Contact.objects.select_related("organisation"), pk=pk, tenant=tenant)
+    return render(request, "crm/contact_detail.html", {
+        "active_nav": "organisations",
+        "user_tenant": tenant,
+        "contact": contact,
+        "project_roles": contact.project_stakeholder_roles.select_related("project").order_by("-project__start_date"),
     })

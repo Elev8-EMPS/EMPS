@@ -203,7 +203,7 @@
     {% for s in stakeholders %}
     <li>
       <a href="/stakeholders/{{ s.pk }}/edit/" style="display:block;">
-        <strong>{{ s.get_role_display }}</strong>: {{ s.display_name }}
+        <strong>{{ s.get_role_display }}</strong>: {{ s.display_name }}{% if s.contact %} <span class="tag">Linked contact</span>{% endif %}
         {% if s.external_company %}({{ s.external_company }}){% endif %}
         {% if s.external_email %}<span class="tag">{{ s.external_email }}</span>{% endif %}
         {% if s.external_phone %}<span class="tag">{{ s.external_phone }}</span>{% endif %}
@@ -235,7 +235,8 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Role</label>
-          <select name="role" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <select name="role" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="" selected disabled>— Select their role —</option>
             <option value="requesting_contact">Requesting contact</option>
             <option value="client_contact">Client contact</option>
             <option value="billing_contact">Billing contact</option>
