@@ -31,6 +31,52 @@ def _generate_checklist_items(project, tenant, modality_ids):
 
 
 @login_required
+def stakeholder_edit(request, pk):
+    tenant = get_user_tenant(request)
+    stakeholder = get_object_or_404(ProjectStakeholder, pk=pk, tenant=tenant)
+    project_pk = stakeholder.project_id
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "delete":
+            stakeholder.delete()
+            return redirect(f"/projects/{project_pk}/?tab=people")
+
+        if action == "archive":
+            stakeholder.is_archived = True
+            stakeholder.save()
+            return redirect(f"/projects/{project_pk}/?tab=people")
+
+        if action == "unarchive":
+            stakeholder.is_archived = False
+            stakeholder.save()
+            return redirect(f"/projects/{project_pk}/?tab=people")
+
+        if action == "update":
+            stakeholder.role = request.POST.get("role", stakeholder.role)
+            contact_id = request.POST.get("contact")
+            stakeholder.contact_id = contact_id or None
+            stakeholder.external_name = request.POST.get("external_name", "").strip()
+            stakeholder.external_company = request.POST.get("external_company", "").strip()
+            stakeholder.external_email = request.POST.get("external_email", "").strip()
+            stakeholder.external_phone = request.POST.get("external_phone", "").strip()
+            stakeholder.notes = request.POST.get("notes", "").strip()
+            stakeholder.save()
+            return redirect(f"/projects/{project_pk}/?tab=people")
+
+    from crm.models import Contact
+    available_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name") if tenant else Contact.objects.none()
+
+    return render(request, "delivery/stakeholder_edit.html", {
+        "active_nav": "projects",
+        "user_tenant": tenant,
+        "stakeholder": stakeholder,
+        "available_contacts": available_contacts,
+    })
+
+
+@login_required
 def project_create(request):
     tenant = get_user_tenant(request)
 
@@ -170,9 +216,11 @@ def project_detail(request, pk):
         checklist_summary = {"total": total, "done": done}
 
     stakeholders = None
+    archived_stakeholders = None
     available_contacts = None
     if tab == "people":
-        stakeholders = project.stakeholders.select_related("contact").order_by("role")
+        stakeholders = project.stakeholders.filter(is_archived=False).select_related("contact").order_by("role")
+        archived_stakeholders = project.stakeholders.filter(is_archived=True).select_related("contact")
         from crm.models import Contact
         available_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name") if tenant else Contact.objects.none()
 
@@ -193,6 +241,7 @@ def project_detail(request, pk):
         "checklist_summary": checklist_summary,
         "available_optional_items": available_optional_items,
         "stakeholders": stakeholders,
+        "archived_stakeholders": archived_stakeholders,
         "available_contacts": available_contacts,
         "available_modalities": Modality.objects.filter(tenant=tenant).exclude(
             id__in=project.modalities.values_list("id", flat=True)

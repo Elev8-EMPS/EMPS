@@ -242,6 +242,7 @@ class ProjectStakeholder(TenantModel):
     external_email = models.EmailField(blank=True)
     external_phone = models.CharField(max_length=50, blank=True)
     notes = models.TextField(blank=True)
+    is_archived = models.BooleanField(default=False)
 
     def display_name(self):
         if self.contact:
