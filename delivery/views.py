@@ -113,15 +113,38 @@ def project_detail(request, pk):
             _generate_checklist_items(project, tenant, list(project.modalities.values_list("id", flat=True)))
         return redirect(f"/projects/{project.pk}/?tab=checklist")
 
+    if request.method == "POST" and request.POST.get("action") == "add_optional_item":
+        template_id = request.POST.get("template_id")
+        if template_id:
+            tmpl = ChecklistItemTemplate.objects.filter(id=template_id, tenant=tenant).first()
+            if tmpl and not project.checklist_items.filter(text=tmpl.text).exists():
+                ProjectChecklistItem.objects.create(
+                    tenant=tenant, project=project, modality=tmpl.modality, text=tmpl.text, order=tmpl.order,
+                )
+        return redirect(f"/projects/{project.pk}/?tab=checklist")
+
+    if request.method == "POST" and request.POST.get("action") == "add_custom_item":
+        text = request.POST.get("custom_text", "").strip()
+        if text:
+            ProjectChecklistItem.objects.create(tenant=tenant, project=project, text=text)
+        return redirect(f"/projects/{project.pk}/?tab=checklist")
+
     tab = request.GET.get("tab", "overview")
 
     checklist_items = None
     checklist_progress = None
+    available_optional_items = None
     if tab == "checklist":
         checklist_items = project.checklist_items.select_related("modality").order_by("modality__name", "order", "text")
         total = checklist_items.count()
         done = checklist_items.filter(is_done=True).count()
         checklist_progress = {"total": total, "done": done, "pct": round(done / total * 100) if total else 0}
+
+        existing_texts = set(checklist_items.values_list("text", flat=True))
+        modality_ids = list(project.modalities.values_list("id", flat=True))
+        available_optional_items = ChecklistItemTemplate.objects.filter(
+            tenant=tenant, always_included=False, modality_id__in=modality_ids
+        ).exclude(text__in=existing_texts).select_related("modality")
 
     checklist_summary = None
     if tab == "overview":
@@ -144,6 +167,7 @@ def project_detail(request, pk):
         "checklist_items": checklist_items,
         "checklist_progress": checklist_progress,
         "checklist_summary": checklist_summary,
+        "available_optional_items": available_optional_items,
         "available_modalities": Modality.objects.filter(tenant=tenant).exclude(
             id__in=project.modalities.values_list("id", flat=True)
         ) if tab == "checklist" else None,
