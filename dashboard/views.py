@@ -39,6 +39,15 @@ def command_centre(request):
     invoices = Invoice.objects.filter(tenant=tenant)
     tasks = Task.objects.filter(tenant=tenant)
 
+    from crm.models import ProposalFollowUp
+    from finance.models import InvoiceFollowUp
+    proposal_followups_due = ProposalFollowUp.objects.filter(
+        tenant=tenant, status="scheduled", due_date__lte=today
+    ).select_related("proposal", "proposal__organisation")
+    invoice_followups_due = InvoiceFollowUp.objects.filter(
+        tenant=tenant, status="scheduled", due_date__lte=today
+    ).select_related("invoice", "invoice__organisation")
+
     open_proposal_statuses = ["draft", "internal_review", "director_review", "approved", "issued", "follow_up_due", "revised"]
     unpaid_invoice_statuses = ["awaiting_approval", "approved", "issued", "part_paid", "overdue", "disputed"]
 
@@ -78,5 +87,7 @@ def command_centre(request):
         "high_priority_tasks": tasks.filter(priority__in=["high", "critical"]).exclude(
             status__in=["completed", "cancelled"]
         ),
+        "proposal_followups_due": proposal_followups_due,
+        "invoice_followups_due": invoice_followups_due,
     }
     return render(request, "dashboard/command_centre.html", context)

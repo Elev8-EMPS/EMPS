@@ -78,10 +78,31 @@ def proposal_detail(request, pk):
         Proposal.objects.select_related("organisation", "contact", "enquiry", "director_approved_by"),
         pk=pk, tenant=tenant,
     )
+
+    if request.method == "POST" and request.POST.get("action") == "action_followup":
+        from .models import ProposalFollowUp, add_working_days
+        followup_id = request.POST.get("followup_id")
+        followup = get_object_or_404(ProposalFollowUp, pk=followup_id, proposal=proposal, tenant=tenant)
+        followup.outcome = request.POST.get("outcome", "")
+        followup.outcome_notes = request.POST.get("outcome_notes", "").strip()
+        followup.status = "done"
+        followup.actioned_by = request.user
+        followup.actioned_at = timezone.now()
+        followup.save()
+
+        terminal_statuses = ["accepted", "declined", "lost", "withdrawn", "expired"]
+        if proposal.status not in terminal_statuses:
+            ProposalFollowUp.objects.create(
+                tenant=tenant, proposal=proposal, follow_up_number=followup.follow_up_number + 1,
+                due_date=add_working_days(timezone.now().date(), 7),
+            )
+        return redirect("proposal_detail", pk=proposal.pk)
+
     return render(request, "crm/proposal_detail.html", {
         "active_nav": "proposals",
         "user_tenant": tenant,
         "proposal": proposal,
+        "follow_ups": proposal.follow_ups.all(),
     })
 
 

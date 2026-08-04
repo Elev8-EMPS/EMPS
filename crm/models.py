@@ -1,6 +1,21 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 
 from tenants.models import TenantModel
+
+
+def add_working_days(start_date, n):
+    """Adds n working days (Mon-Fri) to start_date. Does not account
+    for public holidays - a limitation worth knowing about."""
+    d = start_date
+    added = 0
+    while added < n:
+        d = d + timedelta(days=1)
+        if d.weekday() < 5:
+            added += 1
+    return d
 
 
 class Organisation(TenantModel):
@@ -125,6 +140,64 @@ class Proposal(TenantModel):
 
     def __str__(self):
         return self.proposal_number
+
+    def save(self, *args, **kwargs):
+        old_status = None
+        if self.pk:
+            old_status = Proposal.objects.filter(pk=self.pk).values_list("status", flat=True).first()
+        super().save(*args, **kwargs)
+
+        terminal_statuses = ["accepted", "declined", "lost", "withdrawn", "expired"]
+
+        # Transitioned INTO 'issued' -> schedule the first follow-up, 3 working days out.
+        if old_status != "issued" and self.status == "issued":
+            ProposalFollowUp.objects.create(
+                tenant=self.tenant, proposal=self, follow_up_number=1,
+                due_date=add_working_days(timezone.now().date(), 3),
+            )
+
+        # Transitioned INTO a terminal status -> close any still-scheduled follow-up.
+        if self.status in terminal_statuses and old_status not in terminal_statuses:
+            self.follow_ups.filter(status="scheduled").update(status="closed")
+
+
+class ProposalFollowUp(TenantModel):
+    """
+    An automatically-scheduled follow-up on a proposal that's been
+    sent but not yet accepted/declined. The first is created 3
+    working days after the proposal is marked 'issued'; actioning it
+    with an outcome (if the proposal is still undecided) schedules
+    the next one 7 working days later. Closes automatically once the
+    proposal reaches a terminal status (accepted, declined, etc).
+    """
+
+    STATUS_CHOICES = [
+        ("scheduled", "Scheduled"),
+        ("done", "Done"),
+        ("closed", "Closed"),
+    ]
+    OUTCOME_CHOICES = [
+        ("tender", "On tender"),
+        ("with_client", "With client"),
+        ("pending", "Pending"),
+        ("on_hold", "On hold"),
+        ("other", "Other"),
+    ]
+
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="follow_ups")
+    follow_up_number = models.PositiveIntegerField(default=1)
+    due_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="scheduled")
+    outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, blank=True)
+    outcome_notes = models.TextField(blank=True)
+    actioned_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
+    actioned_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["due_date"]
+
+    def __str__(self):
+        return f"Follow-up #{self.follow_up_number} for {self.proposal.proposal_number}"
 
 
 class Communication(TenantModel):

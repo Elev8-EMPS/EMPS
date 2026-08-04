@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
-from .models import Organisation, Contact, Enquiry, Proposal, Communication
+from .models import Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp
 
 
 @admin.register(Organisation)
@@ -46,3 +46,9 @@ class CommunicationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
         if not obj.pk and not obj.logged_by:
             obj.logged_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(ProposalFollowUp)
+class ProposalFollowUpAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "follow_up_number", "due_date", "status", "outcome", "tenant")
+    list_filter = ("status", "outcome", "tenant")

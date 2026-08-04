@@ -51,6 +51,14 @@
         {% if proposal_follow_ups %}<ul class="rows">{% for p in proposal_follow_ups %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag warn">{{ p.follow_up_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
       </div>
       <div class="section">
+        <h2>Proposal follow-ups due <span class="count">({{ proposal_followups_due|length }})</span></h2>
+        {% if proposal_followups_due %}<ul class="rows">{% for f in proposal_followups_due %}<li><a href="/proposals/{{ f.proposal.pk }}/">{{ f.proposal.proposal_number }} - {{ f.proposal.organisation.legal_name }}<span class="tag warn">Follow-up #{{ f.follow_up_number }} &middot; {{ f.due_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
+      </div>
+      <div class="section">
+        <h2>Invoice follow-ups due <span class="count">({{ invoice_followups_due|length }})</span></h2>
+        {% if invoice_followups_due %}<ul class="rows">{% for f in invoice_followups_due %}<li><a href="/invoices/{{ f.invoice.pk }}/">{{ f.invoice.invoice_number }} - {{ f.invoice.organisation.legal_name }}<span class="tag warn">Follow-up #{{ f.follow_up_number }} &middot; {{ f.due_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No invoice follow-ups due.</div>{% endif %}
+      </div>
+      <div class="section">
         <h2>Overdue invoices <span class="count">({{ overdue_invoices|length }})</span></h2>
         {% if overdue_invoices %}<ul class="rows">{% for i in overdue_invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} - {{ i.organisation.legal_name }}<span class="tag danger">${{ i.outstanding_amount }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No overdue invoices.</div>{% endif %}
       </div>

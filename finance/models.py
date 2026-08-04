@@ -1,7 +1,8 @@
 from django.db import models
+from django.utils import timezone
 
 from tenants.models import TenantModel
-from crm.models import Organisation
+from crm.models import Organisation, add_working_days
 from delivery.models import Project, Milestone
 
 
@@ -36,6 +37,8 @@ class Invoice(TenantModel):
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
     accounting_reference = models.CharField(max_length=100, blank=True)  # Xero/MYOB reference
+    xero_reminders_sent = models.PositiveIntegerField(default=0)
+    statement_sent = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
 
     @property
@@ -44,6 +47,53 @@ class Invoice(TenantModel):
 
     def __str__(self):
         return self.invoice_number
+
+    def save(self, *args, **kwargs):
+        old_status = None
+        if self.pk:
+            old_status = Invoice.objects.filter(pk=self.pk).values_list("status", flat=True).first()
+        super().save(*args, **kwargs)
+
+        closed_statuses = ["paid", "cancelled", "written_off"]
+
+        if old_status != "issued" and self.status == "issued":
+            InvoiceFollowUp.objects.create(
+                tenant=self.tenant, invoice=self, follow_up_number=1,
+                due_date=add_working_days(timezone.now().date(), 7),
+            )
+
+        if self.status in closed_statuses and old_status not in closed_statuses:
+            self.follow_ups.filter(status="scheduled").update(status="closed")
+
+
+class InvoiceFollowUp(TenantModel):
+    """
+    An automatically-scheduled payment follow-up: the first is
+    created 7 working days after an invoice is marked 'issued'.
+    Actioning it (if still unpaid) schedules the next one 7 working
+    days later. Closes automatically once the invoice is paid,
+    cancelled, or written off.
+    """
+
+    STATUS_CHOICES = [
+        ("scheduled", "Scheduled"),
+        ("done", "Done"),
+        ("closed", "Closed"),
+    ]
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="follow_ups")
+    follow_up_number = models.PositiveIntegerField(default=1)
+    due_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="scheduled")
+    outcome_notes = models.TextField(blank=True)
+    actioned_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
+    actioned_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["due_date"]
+
+    def __str__(self):
+        return f"Follow-up #{self.follow_up_number} for {self.invoice.invoice_number}"
 
 
 class Payment(TenantModel):
