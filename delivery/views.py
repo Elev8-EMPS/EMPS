@@ -56,11 +56,20 @@ def stakeholder_edit(request, pk):
         if action == "update":
             stakeholder.role = request.POST.get("role", stakeholder.role)
             contact_id = request.POST.get("contact")
-            stakeholder.contact_id = contact_id or None
-            stakeholder.external_name = request.POST.get("external_name", "").strip()
-            stakeholder.external_company = request.POST.get("external_company", "").strip()
-            stakeholder.external_email = request.POST.get("external_email", "").strip()
-            stakeholder.external_phone = request.POST.get("external_phone", "").strip()
+            external_name = request.POST.get("external_name", "").strip()
+            external_company = request.POST.get("external_company", "").strip()
+            external_email = request.POST.get("external_email", "").strip()
+            external_phone = request.POST.get("external_phone", "").strip()
+
+            if contact_id:
+                stakeholder.contact_id = contact_id
+            elif external_name:
+                stakeholder.contact = _find_or_create_contact_from_external(
+                    tenant, external_name, external_company, external_email, external_phone
+                )
+            else:
+                stakeholder.contact = None
+
             stakeholder.notes = request.POST.get("notes", "").strip()
             stakeholder.save()
             return redirect(f"/projects/{project_pk}/?tab=people")
@@ -117,6 +126,42 @@ def project_create(request):
         "users": users,
         "modalities": modalities,
     })
+
+
+def _find_or_create_contact_from_external(tenant, name, company, email, phone):
+    """
+    When a stakeholder is added with just a name/company/email (no
+    existing Contact picked), this creates a real Contact record -
+    reusing an existing one by email if there's a match, so the same
+    person added to multiple projects doesn't get duplicated. Also
+    finds-or-creates the Organisation by company name, so the person
+    shows up correctly grouped in the tenant-wide Contacts directory.
+    """
+    from crm.models import Contact, Organisation
+
+    if not name:
+        return None
+
+    if email:
+        existing = Contact.objects.filter(tenant=tenant, email__iexact=email).first()
+        if existing:
+            return existing
+
+    organisation = None
+    if company:
+        organisation, _ = Organisation.objects.get_or_create(
+            tenant=tenant, legal_name__iexact=company,
+            defaults={"legal_name": company, "client_status": "prospect"},
+        )
+
+    parts = name.split(" ", 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ""
+
+    return Contact.objects.create(
+        tenant=tenant, organisation=organisation, first_name=first_name, last_name=last_name,
+        email=email, mobile=phone,
+    )
 
 
 @login_required
@@ -176,19 +221,28 @@ def project_detail(request, pk):
         return redirect(f"/projects/{project.pk}/?tab=checklist")
 
     if request.method == "POST" and request.POST.get("action") == "add_stakeholder":
+        contact_id = request.POST.get("contact")
+        external_name = request.POST.get("external_name", "").strip()
+        external_company = request.POST.get("external_company", "").strip()
+        external_email = request.POST.get("external_email", "").strip()
+        external_phone = request.POST.get("external_phone", "").strip()
+
         stakeholder = ProjectStakeholder(
             tenant=tenant, project=project,
             role=request.POST.get("role", "other"),
-            external_name=request.POST.get("external_name", "").strip(),
-            external_company=request.POST.get("external_company", "").strip(),
-            external_email=request.POST.get("external_email", "").strip(),
-            external_phone=request.POST.get("external_phone", "").strip(),
             notes=request.POST.get("notes", "").strip(),
         )
-        contact_id = request.POST.get("contact")
         if contact_id:
             stakeholder.contact_id = contact_id
-        if stakeholder.contact_id or stakeholder.external_name:
+        elif external_name:
+            # No existing contact picked - create (or reuse) a real
+            # Contact record so this person shows up in the tenant-wide
+            # Contacts directory, not just on this project.
+            stakeholder.contact = _find_or_create_contact_from_external(
+                tenant, external_name, external_company, external_email, external_phone
+            )
+
+        if stakeholder.contact_id:
             stakeholder.save()
         return redirect(f"/projects/{project.pk}/?tab=people")
 

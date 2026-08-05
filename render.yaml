@@ -10,7 +10,7 @@ services:
     name: epms
     runtime: python
     plan: free
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py create_admin && python manage.py backfill_stakeholder_contacts"
     startCommand: "gunicorn epms.wsgi:application"
     envVars:
       - key: SECRET_KEY
