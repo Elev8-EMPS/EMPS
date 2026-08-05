@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from tenants.models import Team, Modality, ChecklistItemTemplate
 from tenants.utils import get_user_tenant
-from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder
+from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
 def _generate_checklist_items(project, tenant, modality_ids):
@@ -111,6 +111,11 @@ def project_create(request):
             project.save()
             if modality_ids:
                 project.modalities.set(modality_ids)
+                for m_id in modality_ids:
+                    ProjectScopeAddition.objects.get_or_create(
+                        tenant=tenant, project=project, modality_id=m_id,
+                        defaults={"is_original_scope": True, "added_by": request.user},
+                    )
             _generate_checklist_items(project, tenant, modality_ids)
             return redirect("project_detail", pk=project.pk)
 
@@ -201,7 +206,23 @@ def project_detail(request, pk):
         modality_id = request.POST.get("modality")
         if modality_id:
             project.modalities.add(modality_id)
+            modality = Modality.objects.filter(id=modality_id, tenant=tenant).first()
+            if modality:
+                suffix = modality.code or modality.name[:1].upper()
+                ProjectScopeAddition.objects.get_or_create(
+                    tenant=tenant, project=project, modality=modality,
+                    defaults={"is_original_scope": False, "suffix": suffix, "added_by": request.user},
+                )
             _generate_checklist_items(project, tenant, list(project.modalities.values_list("id", flat=True)))
+        return redirect(f"/projects/{project.pk}/?tab=checklist")
+
+    if request.method == "POST" and request.POST.get("action") == "update_scope_budget":
+        addition_id = request.POST.get("addition_id")
+        addition = ProjectScopeAddition.objects.filter(id=addition_id, tenant=tenant, project=project).first()
+        if addition:
+            budget_raw = request.POST.get("budget_amount", "").strip()
+            addition.budget_amount = budget_raw or None
+            addition.save()
         return redirect(f"/projects/{project.pk}/?tab=checklist")
 
     if request.method == "POST" and request.POST.get("action") == "add_optional_item":
@@ -251,6 +272,7 @@ def project_detail(request, pk):
     checklist_items = None
     checklist_progress = None
     available_optional_items = None
+    scope_additions = None
     if tab == "checklist":
         checklist_items = project.checklist_items.select_related("modality").order_by("modality__name", "order", "text")
         total = checklist_items.count()
@@ -262,6 +284,8 @@ def project_detail(request, pk):
         available_optional_items = ChecklistItemTemplate.objects.filter(
             tenant=tenant, always_included=False, modality_id__in=modality_ids
         ).exclude(text__in=existing_texts).select_related("modality")
+
+        scope_additions = project.scope_additions.select_related("modality").order_by("-is_original_scope", "suffix")
 
     checklist_summary = None
     if tab == "overview":
@@ -294,6 +318,7 @@ def project_detail(request, pk):
         "checklist_progress": checklist_progress,
         "checklist_summary": checklist_summary,
         "available_optional_items": available_optional_items,
+        "scope_additions": scope_additions,
         "stakeholders": stakeholders,
         "archived_stakeholders": archived_stakeholders,
         "available_contacts": available_contacts,

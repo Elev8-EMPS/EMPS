@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
-from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder
+from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
 @admin.register(Project)
@@ -58,3 +58,9 @@ class ProjectChecklistItemAdmin(TenantScopedAdmin, admin.ModelAdmin):
 class ProjectStakeholderAdmin(TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("project", "role", "display_name", "external_company", "tenant")
     list_filter = ("role", "tenant")
+
+
+@admin.register(ProjectScopeAddition)
+class ProjectScopeAdditionAdmin(TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("full_code", "project", "modality", "is_original_scope", "budget_amount", "tenant")
+    list_filter = ("is_original_scope", "tenant")

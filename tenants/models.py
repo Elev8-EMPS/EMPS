@@ -93,6 +93,11 @@ class Modality(models.Model):
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="modalities")
     name = models.CharField(max_length=100)
+    code = models.CharField(
+        max_length=5, blank=True,
+        help_text="Short suffix used when this discipline is added to a project after it's already "
+                   "created, e.g. 'E' for Electrical -> PJ-2024-001-E.",
+    )
 
     def __str__(self):
         return self.name

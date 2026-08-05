@@ -19,7 +19,7 @@ class TeamAdmin(TenantScopedAdmin, admin.ModelAdmin):
 
 @admin.register(Modality)
 class ModalityAdmin(TenantScopedAdmin, admin.ModelAdmin):
-    list_display = ("name", "tenant")
+    list_display = ("name", "code", "tenant")
 
 
 @admin.register(ChecklistItemTemplate)

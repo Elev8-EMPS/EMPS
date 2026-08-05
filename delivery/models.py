@@ -264,3 +264,34 @@ class ProjectStakeholder(TenantModel):
 
     def __str__(self):
         return f"{self.get_role_display()}: {self.display_name()}"
+
+
+class ProjectScopeAddition(TenantModel):
+    """
+    Tracks each modality's inclusion on a project. Modalities picked
+    at project creation are 'original scope' - part of the base
+    project code, no suffix. A modality added later gets its own
+    suffixed code (e.g. PJ-2024-001-E) and its own budget line,
+    since it represents extra scope beyond the original fee proposal.
+    """
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scope_additions")
+    modality = models.ForeignKey("tenants.Modality", on_delete=models.CASCADE, related_name="+")
+    is_original_scope = models.BooleanField(default=True)
+    suffix = models.CharField(max_length=10, blank=True)
+    budget_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    added_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("project", "modality")]
+        ordering = ["is_original_scope", "suffix"]
+
+    @property
+    def full_code(self):
+        if self.is_original_scope or not self.suffix:
+            return self.project.project_number
+        return f"{self.project.project_number}-{self.suffix}"
+
+    def __str__(self):
+        return f"{self.full_code} ({self.modality.name})"
