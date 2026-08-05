@@ -7,6 +7,7 @@
   <h2>Enter your authentication code</h2>
   <div style="padding:18px;">
     <p style="margin-top:0;">Enter the 6-digit code from your authenticator app, or one of your saved backup codes.</p>
+    <p style="font-size:12.5px; color:var(--muted); margin-top:-8px;">This device won't ask again for 24 hours after a successful code.</p>
     <form method="post" style="display:flex; gap:10px; align-items:center;">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}">

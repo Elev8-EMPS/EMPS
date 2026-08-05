@@ -142,3 +142,8 @@ LOGGING = {
         },
     },
 }
+
+# How long a "trusted device" skips the 2FA challenge after a successful
+# code entry. Starting at 24 hours; bump to 168 (7 days) once this is
+# live and proven, per the plan.
+TRUSTED_DEVICE_HOURS = 24

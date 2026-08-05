@@ -10,6 +10,8 @@ from django_otp import login as otp_login
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 
+from .trusted_device import set_trusted_device_cookie
+
 
 def _generate_backup_codes(user, count=10):
     """
@@ -125,7 +127,9 @@ def verify_2fa(request):
         device = match_token(request.user, token)
         if device is not None:
             otp_login(request, device)
-            return redirect(next_url)
+            response = redirect(next_url)
+            set_trusted_device_cookie(response, request.user)
+            return response
         messages.error(request, "That code wasn't recognised - check your authenticator app, or use a backup code.")
 
     return render(request, "security/verify_2fa.html", {"next": next_url})

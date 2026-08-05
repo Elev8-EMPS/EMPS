@@ -1,5 +1,7 @@
 from django.shortcuts import redirect
 
+from .trusted_device import is_device_trusted
+
 # Paths that must always work regardless of verification state, so
 # nobody can ever get stuck in a redirect loop or lose access to
 # managing their own 2FA.
@@ -37,6 +39,8 @@ class RequireOTPForSuperusers(object):
             from django_otp.plugins.otp_totp.models import TOTPDevice
 
             if TOTPDevice.objects.filter(user=user, confirmed=True).exists():
+                if is_device_trusted(request, user):
+                    return self.get_response(request)
                 return redirect(f"/security/verify-2fa/?next={request.path}")
 
         return self.get_response(request)
