@@ -74,6 +74,10 @@ class Team(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="teams")
     name = models.CharField(max_length=100)
     members = models.ManyToManyField("auth.User", related_name="teams", blank=True)
+    modalities = models.ManyToManyField(
+        "Modality", related_name="teams", blank=True,
+        help_text="Which disciplines this team covers - used to show them their relevant active projects.",
+    )
 
     def __str__(self):
         return self.name

@@ -3,11 +3,12 @@ import datetime
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render
+from django.utils import timezone
 
 from tenants.models import Tenant
 from tenants.utils import get_open_todo_count
 from crm.models import Proposal
-from delivery.models import Milestone, Task
+from delivery.models import Milestone, Task, Project
 from finance.models import Invoice
 
 
@@ -47,6 +48,23 @@ def command_centre(request):
     invoice_followups_due = InvoiceFollowUp.objects.filter(
         tenant=tenant, status="scheduled", due_date__lte=today
     ).select_related("invoice", "invoice__organisation")
+
+    # This person's team(s) and the disciplines those teams cover -
+    # used to show "projects relevant to my team" below.
+    my_teams = request.user.teams.filter(tenant=tenant)
+    my_team_modality_ids = list(
+        my_teams.values_list("modalities__id", flat=True).distinct()
+    )
+    my_team_projects = None
+    if my_team_modality_ids:
+        cutoff = timezone.now() - datetime.timedelta(days=7)
+        my_team_projects = Project.objects.filter(
+            tenant=tenant, status="active", modalities__id__in=my_team_modality_ids
+        ).distinct().select_related("client_organisation").order_by("-activated_at")
+        my_team_projects = [
+            {"project": p, "is_new": p.activated_at is not None and p.activated_at >= cutoff}
+            for p in my_team_projects
+        ]
 
     open_proposal_statuses = ["draft", "internal_review", "director_review", "approved", "issued", "follow_up_due", "revised"]
     unpaid_invoice_statuses = ["awaiting_approval", "approved", "issued", "part_paid", "overdue", "disputed"]
@@ -89,5 +107,6 @@ def command_centre(request):
         ),
         "proposal_followups_due": proposal_followups_due,
         "invoice_followups_due": invoice_followups_due,
+        "my_team_projects": my_team_projects,
     }
     return render(request, "dashboard/command_centre.html", context)

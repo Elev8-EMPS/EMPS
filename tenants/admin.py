@@ -14,7 +14,7 @@ class TenantAdmin(admin.ModelAdmin):
 @admin.register(Team)
 class TeamAdmin(TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("name", "tenant")
-    filter_horizontal = ("members",)
+    filter_horizontal = ("members", "modalities")
 
 
 @admin.register(Modality)

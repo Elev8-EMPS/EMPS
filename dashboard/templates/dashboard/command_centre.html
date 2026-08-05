@@ -26,6 +26,17 @@
     <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
   </div>
 
+  {% if my_team_projects %}
+  <div class="section">
+    <h2>My team's active projects <span class="count">({{ my_team_projects|length }})</span></h2>
+    <ul class="rows">
+      {% for entry in my_team_projects %}
+      <li><a href="/projects/{{ entry.project.pk }}/">{{ entry.project.project_number }} - {{ entry.project.name }} <span class="tag">{{ entry.project.client_organisation.legal_name }}</span>{% if entry.is_new %} <span class="tag ok">New</span>{% endif %}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   <div class="grid-2">
     <div>
       <div class="section">

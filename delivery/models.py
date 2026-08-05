@@ -41,9 +41,22 @@ class Project(TenantModel):
     target_completion_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     archive_date = models.DateField(null=True, blank=True)
+    activated_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Set automatically the first time this project's status becomes Active.",
+    )
 
     def __str__(self):
         return f"{self.project_number} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        old_status = None
+        if self.pk:
+            old_status = Project.objects.filter(pk=self.pk).values_list("status", flat=True).first()
+        if self.status == "active" and old_status != "active" and not self.activated_at:
+            from django.utils import timezone
+            self.activated_at = timezone.now()
+        super().save(*args, **kwargs)
 
 
 class Milestone(TenantModel):
