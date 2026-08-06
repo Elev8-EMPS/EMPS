@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Manage Teams - EPMS{% endblock %}
+{% block header %}Manage &rsaquo; Teams{% endblock %}
+{% block content %}
+
+<div class="searchbar">
+  <form style="display:flex; gap:10px;">
+    <a href="/manage/teams/new/" class="btn" style="background:var(--ok); margin-left:auto;">+ New team</a>
+  </form>
+</div>
+
+{% if teams %}
+<table class="list">
+  <tr><th>Team</th><th>Members</th><th>Modalities covered</th></tr>
+  {% for t in teams %}
+  <tr>
+    <td><a href="/manage/teams/{{ t.pk }}/">{{ t.name }}</a></td>
+    <td>{{ t.members.count }}</td>
+    <td>
+      {% for m in t.modalities.all %}<span class="tag">{{ m.name }}</span> {% empty %}—{% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">No teams yet - add the first one above.</div></div>
+{% endif %}
+
+{% endblock %}

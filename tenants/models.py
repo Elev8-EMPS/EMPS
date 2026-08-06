@@ -58,6 +58,13 @@ class UserProfile(models.Model):
     user = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="profile")
     tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="users")
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, blank=True)
+    is_tenant_admin = models.BooleanField(
+        default=False,
+        help_text="Can manage this tenant's Users, Teams and Modalities from the "
+                   "Manage area, without needing Django's backend admin. Separate "
+                   "from their day-to-day role above - e.g. an Administration user "
+                   "can be a Tenant Admin without being a Director.",
+    )
 
     def __str__(self):
         return f"{self.user.username} -> {self.tenant.name if self.tenant else 'no tenant'}"

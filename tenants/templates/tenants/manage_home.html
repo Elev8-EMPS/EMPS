@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Manage - EPMS{% endblock %}
+{% block header %}Manage{% endblock %}
+{% block content %}
+
+<p style="color:var(--muted); font-size:13.5px; margin-top:0;">
+  Set up who has access, how they're grouped into teams, and which disciplines your projects can cover -
+  all without leaving this area.
+</p>
+
+<div class="kpis">
+  <a href="/manage/users/" style="text-decoration:none; color:inherit;">
+    <div class="kpi">
+      <div class="num">{{ user_count }}</div>
+      <div class="label">Users</div>
+    </div>
+  </a>
+  <a href="/manage/teams/" style="text-decoration:none; color:inherit;">
+    <div class="kpi">
+      <div class="num">{{ team_count }}</div>
+      <div class="label">Teams</div>
+    </div>
+  </a>
+  <a href="/manage/modalities/" style="text-decoration:none; color:inherit;">
+    <div class="kpi">
+      <div class="num">{{ modality_count }}</div>
+      <div class="label">Modalities</div>
+    </div>
+  </a>
+</div>
+
+<div class="grid-2">
+  <div class="section">
+    <h2>Users</h2>
+    <div style="padding:18px;">
+      <p style="margin-top:0; font-size:13.5px; color:var(--muted);">
+        Add people, set their role, put them on teams, and turn access on or off - no password
+        resets or account changes need the backend admin anymore.
+      </p>
+      <a href="/manage/users/" class="btn">Manage users</a>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Teams</h2>
+    <div style="padding:18px;">
+      <p style="margin-top:0; font-size:13.5px; color:var(--muted);">
+        Group people together and link each team to the disciplines it covers, so members see the
+        right active projects on their Command Centre.
+      </p>
+      <a href="/manage/teams/" class="btn">Manage teams</a>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Modalities</h2>
+    <div style="padding:18px;">
+      <p style="margin-top:0; font-size:13.5px; color:var(--muted);">
+        The disciplines your projects can involve (e.g. Hydraulics, Electrical), each with a short
+        code used when scope is added to a project after it's created.
+      </p>
+      <a href="/manage/modalities/" class="btn">Manage modalities</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

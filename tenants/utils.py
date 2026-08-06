@@ -25,6 +25,19 @@ def can_view_confidential(user):
     return get_user_role(user) in CONFIDENTIAL_ROLES
 
 
+def is_tenant_admin(user):
+    """Can reach the Manage area (Users, Teams, Modalities) without
+    touching Django's backend admin. Superusers always qualify.
+    Everyone else needs the flag set on their profile - this is
+    deliberately separate from `role`, since a tenant's day-to-day
+    Director or Administration person isn't automatically a Tenant
+    Admin, and vice versa."""
+    if user.is_superuser:
+        return True
+    profile = getattr(user, "profile", None)
+    return bool(profile and profile.is_tenant_admin)
+
+
 def get_user_tenant(request):
     """
     Shared logic for 'which tenant's data should this request see'.

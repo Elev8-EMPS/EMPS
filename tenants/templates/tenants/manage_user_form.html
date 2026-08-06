@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{% if is_new %}New User{% else %}Edit User{% endif %} - EPMS{% endblock %}
+{% block header %}Manage &rsaquo; {% if is_new %}New user{% else %}{{ target_user.username }}{% endif %}{% endblock %}
+{% block content %}
+
+{% if not is_new %}
+<div class="workspace-header" style="display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <h1>{{ target_user.username }}</h1>
+    <div class="meta">{{ target_user.email|default:"No email set" }}</div>
+  </div>
+  <form method="post" style="margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="toggle_active">
+    {% if target_user.is_active %}
+    <button type="submit" class="btn" style="background:var(--danger);" onclick="return confirm('Deactivate {{ target_user.username }}? They will no longer be able to sign in.');">Deactivate</button>
+    {% else %}
+    <button type="submit" class="btn" style="background:var(--ok);">Reactivate</button>
+    {% endif %}
+  </form>
+</div>
+{% endif %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        {% if is_new %}
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Username <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="username" value="{{ form_values.username }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        {% endif %}
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Email</label>
+          <input type="email" name="email" value="{{ target_user.email|default:form_values.email }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">First name</label>
+          <input type="text" name="first_name" value="{{ target_user.first_name|default:form_values.first_name }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Last name</label>
+          <input type="text" name="last_name" value="{{ target_user.last_name|default:form_values.last_name }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">
+          {% if is_new %}Password <span style="color:var(--danger);">*</span>{% else %}New password{% endif %}
+        </label>
+        <input type="password" name="password" style="width:100%; max-width:340px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;" autocomplete="new-password">
+        <div style="font-size:12.5px; color:var(--muted); margin-top:4px;">
+          {% if is_new %}At least 8 characters. Share it with them directly - it won't be shown again.
+          {% else %}Leave blank to keep their current password.{% endif %}
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Role</label>
+          <select name="role" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for value, label in role_choices %}
+            <option value="{{ value }}" {% if profile.role == value or form_values.role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; padding-bottom:11px;">
+            <input type="checkbox" name="is_tenant_admin" {% if profile.is_tenant_admin %}checked{% endif %}>
+            Tenant Admin - can manage Users, Teams and Modalities here
+          </label>
+        </div>
+      </div>
+
+      <div class="section" style="margin-bottom:20px;">
+        <h2>Teams</h2>
+        <div style="padding:18px;">
+          {% if teams %}
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px;">
+            {% for t in teams %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+              <input type="checkbox" name="teams" value="{{ t.pk }}" {% if t.pk in selected_team_ids %}checked{% endif %}> {{ t.name }}
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty">No teams set up yet. <a href="/manage/teams/new/">Create one</a> first.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn">{% if is_new %}Add user{% else %}Save changes{% endif %}</button>
+      <a href="/manage/users/" style="margin-left:12px; font-size:13.5px; color:var(--muted);">Cancel</a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

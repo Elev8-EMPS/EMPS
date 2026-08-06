@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{% if is_new %}New Team{% else %}Edit Team{% endif %} - EPMS{% endblock %}
+{% block header %}Manage &rsaquo; {% if is_new %}New team{% else %}{{ team.name }}{% endif %}{% endblock %}
+{% block content %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="margin-bottom:20px; max-width:400px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Team name <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="name" value="{{ team.name|default:'' }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+
+      <div class="section" style="margin-bottom:20px;">
+        <h2>Modalities covered</h2>
+        <div style="padding:18px;">
+          <p style="margin-top:0; font-size:13.5px; color:var(--muted);">
+            Disciplines this team covers. Any active project involving one of these shows up on
+            every member's "My team's active projects" panel.
+          </p>
+          {% if available_modalities %}
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px;">
+            {% for m in available_modalities %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+              <input type="checkbox" name="modalities" value="{{ m.pk }}" {% if m.pk in selected_modality_ids %}checked{% endif %}> {{ m.name }}
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty">No modalities set up yet. <a href="/manage/modalities/new/">Add one</a> first.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="section" style="margin-bottom:20px;">
+        <h2>Members</h2>
+        <div style="padding:18px;">
+          {% if available_users %}
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px;">
+            {% for u in available_users %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+              <input type="checkbox" name="members" value="{{ u.pk }}" {% if u.pk in selected_member_ids %}checked{% endif %}> {{ u.username }}
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty">No users yet. <a href="/manage/users/new/">Add one</a> first.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn">{% if is_new %}Create team{% else %}Save changes{% endif %}</button>
+      <a href="/manage/teams/" style="margin-left:12px; font-size:13.5px; color:var(--muted);">Cancel</a>
+    </form>
+
+    {% if not is_new %}
+    <form method="post" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border);" onsubmit="return confirm('Delete {{ team.name }}? This cannot be undone.');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn" style="background:var(--danger);">Delete team</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
