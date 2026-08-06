@@ -1,343 +1,233 @@
-from functools import wraps
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import Modality, Team, UserProfile
-from .utils import get_user_tenant, is_tenant_admin
+from .models import Team, Modality, UserProfile, ChecklistItemTemplate
+from .utils import get_user_tenant, can_view_confidential
 
 
-def tenant_admin_required(view_func):
-    """Gate for the Manage area. Anyone who isn't a Tenant Admin (or
-    superuser) gets bounced back to the Command Centre with a message,
-    same pattern as `can_view_financials` elsewhere in the app."""
-
-    @wraps(view_func)
-    @login_required
-    def wrapped(request, *args, **kwargs):
-        if not is_tenant_admin(request.user):
-            messages.error(request, "You don't have permission to manage this area.")
-            return redirect("command_centre")
-        return view_func(request, *args, **kwargs)
-
-    return wrapped
+def _require_admin(request):
+    """Every view in this file is admin/director-only - this is where
+    staff, teams, and modalities get managed, not day-to-day work."""
+    if not can_view_confidential(request.user):
+        messages.error(request, "You don't have permission to access the management area.")
+        return redirect("command_centre")
+    return None
 
 
-# ---------------------------------------------------------------- home
+@login_required
+def manage_hub(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
 
-@tenant_admin_required
-def manage_home(request):
     tenant = get_user_tenant(request)
-    return render(request, "tenants/manage_home.html", {
+    tab = request.GET.get("tab", "users")
+
+    return render(request, "tenants/manage_hub.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "user_count": User.objects.filter(profile__tenant=tenant).count() if tenant else 0,
-        "team_count": Team.objects.filter(tenant=tenant).count() if tenant else 0,
-        "modality_count": Modality.objects.filter(tenant=tenant).count() if tenant else 0,
+        "tab": tab,
+        "users": User.objects.filter(profile__tenant=tenant).select_related("profile").order_by("username") if tab == "users" else None,
+        "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
+        "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
     })
 
 
-# --------------------------------------------------------------- users
-
-@tenant_admin_required
-def manage_user_list(request):
-    tenant = get_user_tenant(request)
-    users = User.objects.filter(profile__tenant=tenant).select_related("profile") if tenant else User.objects.none()
-
-    q = request.GET.get("q", "").strip()
-    if q:
-        users = users.filter(username__icontains=q) | users.filter(email__icontains=q)
-
-    users = users.order_by("username")
-
-    return render(request, "tenants/manage_user_list.html", {
-        "active_nav": "manage",
-        "user_tenant": tenant,
-        "users": users,
-        "q": q,
-    })
-
-
-def _sync_user_teams(user, tenant, team_ids):
-    """A user doesn't hold its teams directly - Team.members is the
-    owning side of the relation - so saving a user's team list means
-    adding it to the chosen teams and removing it from every other
-    team in the tenant."""
-    team_ids = set(team_ids)
-    for team in Team.objects.filter(tenant=tenant):
-        if team.id in team_ids:
-            team.members.add(user)
-        else:
-            team.members.remove(user)
-
-
-@tenant_admin_required
+@login_required
 def manage_user_create(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
     tenant = get_user_tenant(request)
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
         email = request.POST.get("email", "").strip()
-        first_name = request.POST.get("first_name", "").strip()
-        last_name = request.POST.get("last_name", "").strip()
-        password = request.POST.get("password", "")
+        password = request.POST.get("password", "").strip()
         role = request.POST.get("role", "")
-        make_tenant_admin = request.POST.get("is_tenant_admin") == "on"
-        team_ids = [int(x) for x in request.POST.getlist("teams")]
 
-        errors = []
-        if not username:
-            errors.append("Username is required.")
-        elif User.objects.filter(username=username).exists():
-            errors.append("That username is already taken.")
-        if not password or len(password) < 8:
-            errors.append("Password must be at least 8 characters.")
+        if username and password and not User.objects.filter(username=username).exists():
+            user = User.objects.create_user(username=username, email=email, password=password, is_staff=True)
+            UserProfile.objects.update_or_create(user=user, defaults={"tenant": tenant, "role": role})
+            team_ids = request.POST.getlist("teams")
+            if team_ids:
+                user.teams.set(team_ids)
+            messages.success(request, f"Created account for {username}.")
+            return redirect("manage_user_edit", pk=user.pk)
+        else:
+            messages.error(request, "Username and password are required, and the username must be unique.")
 
-        if not errors:
-            user = User.objects.create_user(
-                username=username, email=email, password=password,
-                first_name=first_name, last_name=last_name,
-            )
-            # The post_save signal already created a blank profile.
-            profile = user.profile
-            profile.tenant = tenant
-            profile.role = role
-            profile.is_tenant_admin = make_tenant_admin
-            profile.save()
-            _sync_user_teams(user, tenant, team_ids)
-            messages.success(request, f"{username} has been added.")
-            return redirect("manage_user_list")
-
-        for e in errors:
-            messages.error(request, e)
-
-    teams = Team.objects.filter(tenant=tenant).order_by("name") if tenant else Team.objects.none()
-    return render(request, "tenants/manage_user_form.html", {
+    return render(request, "tenants/manage_user_create.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": True,
-        "target_user": None,
-        "teams": teams,
-        "selected_team_ids": [],
         "role_choices": UserProfile.ROLE_CHOICES,
-        "form_values": request.POST if request.method == "POST" else {},
+        "teams": Team.objects.filter(tenant=tenant).order_by("name"),
     })
 
 
-@tenant_admin_required
+@login_required
 def manage_user_edit(request, pk):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
     tenant = get_user_tenant(request)
-    target_user = get_object_or_404(User.objects.select_related("profile"), pk=pk, profile__tenant=tenant)
-    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+    target_user = get_object_or_404(User, pk=pk, profile__tenant=tenant)
+    profile, _ = UserProfile.objects.get_or_create(user=target_user, defaults={"tenant": tenant})
 
     if request.method == "POST":
-        action = request.POST.get("action", "save")
+        action = request.POST.get("action")
 
-        if action == "toggle_active":
-            target_user.is_active = not target_user.is_active
+        if action == "update":
+            profile.role = request.POST.get("role", "")
+            profile.save()
+            target_user.email = request.POST.get("email", "").strip()
+            target_user.first_name = request.POST.get("first_name", "").strip()
+            target_user.last_name = request.POST.get("last_name", "").strip()
+            target_user.teams.set(request.POST.getlist("teams"))
             target_user.save()
-            messages.success(
-                request,
-                f"{target_user.username} has been {'reactivated' if target_user.is_active else 'deactivated'}.",
-            )
-            return redirect("manage_user_edit", pk=target_user.pk)
+            messages.success(request, "Updated.")
 
-        email = request.POST.get("email", "").strip()
-        first_name = request.POST.get("first_name", "").strip()
-        last_name = request.POST.get("last_name", "").strip()
-        role = request.POST.get("role", "")
-        make_tenant_admin = request.POST.get("is_tenant_admin") == "on"
-        team_ids = [int(x) for x in request.POST.getlist("teams")]
-        new_password = request.POST.get("password", "").strip()
-
-        if new_password and len(new_password) < 8:
-            messages.error(request, "Password must be at least 8 characters - leave it blank to keep the current one.")
-        else:
-            target_user.email = email
-            target_user.first_name = first_name
-            target_user.last_name = last_name
+        elif action == "reset_password":
+            new_password = request.POST.get("new_password", "").strip()
             if new_password:
                 target_user.set_password(new_password)
+                target_user.save()
+                messages.success(request, "Password reset.")
+
+        elif action == "toggle_active":
+            target_user.is_active = not target_user.is_active
             target_user.save()
+            state = "reactivated" if target_user.is_active else "deactivated (retired)"
+            messages.success(request, f"Account {state}. Their history and past work are preserved.")
 
-            profile.role = role
-            profile.is_tenant_admin = make_tenant_admin
-            profile.save()
-            _sync_user_teams(target_user, tenant, team_ids)
+        return redirect("manage_user_edit", pk=target_user.pk)
 
-            messages.success(request, f"{target_user.username} has been updated.")
-            return redirect("manage_user_list")
-
-    teams = Team.objects.filter(tenant=tenant).order_by("name") if tenant else Team.objects.none()
-    selected_team_ids = list(target_user.teams.filter(tenant=tenant).values_list("id", flat=True))
-
-    return render(request, "tenants/manage_user_form.html", {
+    return render(request, "tenants/manage_user_edit.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": False,
         "target_user": target_user,
         "profile": profile,
-        "teams": teams,
-        "selected_team_ids": selected_team_ids,
         "role_choices": UserProfile.ROLE_CHOICES,
-        "form_values": {},
+        "teams": Team.objects.filter(tenant=tenant).order_by("name"),
+        "my_team_ids": set(target_user.teams.values_list("id", flat=True)),
     })
 
 
-# --------------------------------------------------------------- teams
-
-@tenant_admin_required
-def manage_team_list(request):
-    tenant = get_user_tenant(request)
-    teams = Team.objects.filter(tenant=tenant).prefetch_related("members", "modalities").order_by("name") if tenant else Team.objects.none()
-    return render(request, "tenants/manage_team_list.html", {
-        "active_nav": "manage",
-        "user_tenant": tenant,
-        "teams": teams,
-    })
-
-
-def _save_team_from_post(request, tenant, team):
-    team.name = request.POST.get("name", "").strip()
-    team.tenant = tenant
-    team.save()
-    member_ids = [int(x) for x in request.POST.getlist("members")]
-    modality_ids = [int(x) for x in request.POST.getlist("modalities")]
-    team.members.set(User.objects.filter(id__in=member_ids, profile__tenant=tenant))
-    team.modalities.set(Modality.objects.filter(id__in=modality_ids, tenant=tenant))
-
-
-@tenant_admin_required
+@login_required
 def manage_team_create(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
     tenant = get_user_tenant(request)
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
-        if not name:
-            messages.error(request, "Team name is required.")
-        else:
-            team = Team()
-            _save_team_from_post(request, tenant, team)
-            messages.success(request, f"{team.name} has been created.")
-            return redirect("manage_team_list")
+        if name:
+            team = Team.objects.create(tenant=tenant, name=name)
+            team.members.set(request.POST.getlist("members"))
+            team.modalities.set(request.POST.getlist("modalities"))
+            messages.success(request, f"Created team '{name}'.")
+            return redirect("manage_team_edit", pk=team.pk)
 
-    return render(request, "tenants/manage_team_form.html", {
+    return render(request, "tenants/manage_team_create.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": True,
-        "team": None,
-        "available_users": User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none(),
-        "available_modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tenant else Modality.objects.none(),
-        "selected_member_ids": [],
-        "selected_modality_ids": [],
+        "users": User.objects.filter(profile__tenant=tenant).order_by("username"),
+        "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
     })
 
 
-@tenant_admin_required
+@login_required
 def manage_team_edit(request, pk):
+    denied = _require_admin(request)
+    if denied:
+        return denied
     tenant = get_user_tenant(request)
     team = get_object_or_404(Team, pk=pk, tenant=tenant)
 
     if request.method == "POST":
-        if request.POST.get("action") == "delete":
-            name = team.name
+        action = request.POST.get("action")
+        if action == "update":
+            team.name = request.POST.get("name", team.name).strip()
+            team.members.set(request.POST.getlist("members"))
+            team.modalities.set(request.POST.getlist("modalities"))
+            team.save()
+            messages.success(request, "Team updated.")
+        elif action == "delete":
             team.delete()
-            messages.success(request, f"{name} has been deleted.")
-            return redirect("manage_team_list")
+            messages.success(request, "Team deleted.")
+            return redirect("/manage/?tab=teams")
+        return redirect("manage_team_edit", pk=team.pk)
 
-        name = request.POST.get("name", "").strip()
-        if not name:
-            messages.error(request, "Team name is required.")
-        else:
-            _save_team_from_post(request, tenant, team)
-            messages.success(request, f"{team.name} has been updated.")
-            return redirect("manage_team_list")
-
-    return render(request, "tenants/manage_team_form.html", {
+    return render(request, "tenants/manage_team_edit.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": False,
         "team": team,
-        "available_users": User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none(),
-        "available_modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tenant else Modality.objects.none(),
-        "selected_member_ids": list(team.members.values_list("id", flat=True)),
-        "selected_modality_ids": list(team.modalities.values_list("id", flat=True)),
+        "users": User.objects.filter(profile__tenant=tenant).order_by("username"),
+        "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "member_ids": set(team.members.values_list("id", flat=True)),
+        "modality_ids": set(team.modalities.values_list("id", flat=True)),
     })
 
 
-# ----------------------------------------------------------- modalities
-
-@tenant_admin_required
-def manage_modality_list(request):
-    tenant = get_user_tenant(request)
-    modalities = Modality.objects.filter(tenant=tenant).order_by("name") if tenant else Modality.objects.none()
-    return render(request, "tenants/manage_modality_list.html", {
-        "active_nav": "manage",
-        "user_tenant": tenant,
-        "modalities": modalities,
-    })
-
-
-@tenant_admin_required
+@login_required
 def manage_modality_create(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
     tenant = get_user_tenant(request)
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         code = request.POST.get("code", "").strip()
-        if not name:
-            messages.error(request, "Modality name is required.")
-        else:
-            Modality.objects.create(tenant=tenant, name=name, code=code)
-            messages.success(request, f"{name} has been added.")
-            return redirect("manage_modality_list")
+        if name:
+            modality = Modality.objects.create(tenant=tenant, name=name, code=code)
+            messages.success(request, f"Created modality '{name}'.")
+            return redirect("manage_modality_edit", pk=modality.pk)
 
-    return render(request, "tenants/manage_modality_form.html", {
+    return render(request, "tenants/manage_modality_create.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": True,
-        "modality": None,
     })
 
 
-@tenant_admin_required
+@login_required
 def manage_modality_edit(request, pk):
+    denied = _require_admin(request)
+    if denied:
+        return denied
     tenant = get_user_tenant(request)
     modality = get_object_or_404(Modality, pk=pk, tenant=tenant)
 
-    projects_using_it = modality.projects.count()
-
     if request.method == "POST":
-        if request.POST.get("action") == "delete":
-            if projects_using_it:
-                messages.error(
-                    request,
-                    f"Can't delete {modality.name} - it's used on {projects_using_it} project(s). "
-                    "Remove it from those projects first.",
-                )
-                return redirect("manage_modality_edit", pk=modality.pk)
-            name = modality.name
-            modality.delete()
-            messages.success(request, f"{name} has been deleted.")
-            return redirect("manage_modality_list")
-
-        name = request.POST.get("name", "").strip()
-        code = request.POST.get("code", "").strip()
-        if not name:
-            messages.error(request, "Modality name is required.")
-        else:
-            modality.name = name
-            modality.code = code
+        action = request.POST.get("action")
+        if action == "update":
+            modality.name = request.POST.get("name", modality.name).strip()
+            modality.code = request.POST.get("code", "").strip()
             modality.save()
-            messages.success(request, f"{modality.name} has been updated.")
-            return redirect("manage_modality_list")
+            messages.success(request, "Modality updated.")
+        elif action == "delete":
+            modality.delete()
+            messages.success(request, "Modality deleted.")
+            return redirect("/manage/?tab=modalities")
+        elif action == "add_checklist_item":
+            text = request.POST.get("text", "").strip()
+            if text:
+                ChecklistItemTemplate.objects.create(
+                    tenant=tenant, modality=modality, text=text,
+                    always_included=request.POST.get("always_included") == "on",
+                )
+        elif action == "delete_checklist_item":
+            ChecklistItemTemplate.objects.filter(id=request.POST.get("item_id"), tenant=tenant, modality=modality).delete()
+        return redirect("manage_modality_edit", pk=modality.pk)
 
-    return render(request, "tenants/manage_modality_form.html", {
+    return render(request, "tenants/manage_modality_edit.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
-        "is_new": False,
         "modality": modality,
-        "projects_using_it": projects_using_it,
+        "checklist_items": modality.checklist_templates.order_by("-always_included", "text"),
     })

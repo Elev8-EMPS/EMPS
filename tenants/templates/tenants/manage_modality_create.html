@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}New Modality - EPMS{% endblock %}
+{% block header %}New Modality{% endblock %}
+{% block content %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Name <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="name" required placeholder="e.g. Hydraulics" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Code</label>
+          <input type="text" name="code" maxlength="5" placeholder="e.g. H" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <button type="submit" class="btn">Create modality</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
