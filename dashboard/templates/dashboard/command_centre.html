@@ -18,11 +18,11 @@
 
   <div class="kpis">
     <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
-    <div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>
+    {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></div>
     {% if can_view_financials %}<div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
-    <div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>
+    {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
   </div>
 
@@ -34,6 +34,25 @@
       <li><a href="/projects/{{ entry.project.pk }}/">{{ entry.project.project_number }} - {{ entry.project.name }} <span class="tag">{{ entry.project.client_organisation.legal_name }}</span>{% if entry.is_new %} <span class="tag ok">New</span>{% endif %}</a></li>
       {% endfor %}
     </ul>
+  </div>
+  {% endif %}
+
+  {% if proposals_visibility == 'responsible' %}
+  <div class="section">
+    <h2>Enquiries you're responsible for <span class="count">({{ my_responsible_enquiries|length }})</span></h2>
+    {% if my_responsible_enquiries %}<ul class="rows">{% for e in my_responsible_enquiries %}<li><a href="/enquiries/{{ e.pk }}/">{{ e.enquiry_number }} - {{ e.organisation.legal_name }}<span class="tag">{{ e.get_status_display }}</span></a></li>{% endfor %}</ul>
+    {% else %}<div class="empty">None right now.</div>{% endif %}
+  </div>
+  <div class="section">
+    <h2>Proposals you're responsible for <span class="count">({{ my_responsible_proposals|length }})</span></h2>
+    {% if my_responsible_proposals %}<ul class="rows">{% for p in my_responsible_proposals %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
+    {% else %}<div class="empty">None right now.</div>{% endif %}
+    <div style="padding:0 18px 14px; font-size:12.5px; color:var(--muted);">Fee amounts aren't shown here - you don't have full Fee Proposal access.</div>
+  </div>
+  <div class="section">
+    <h2>Archived projects you led <span class="count">({{ my_archived_projects|length }})</span></h2>
+    {% if my_archived_projects %}<ul class="rows">{% for p in my_archived_projects %}<li><a href="/projects/{{ p.pk }}/">{{ p.project_number }} - {{ p.name }}<span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
+    {% else %}<div class="empty">None right now.</div>{% endif %}
   </div>
   {% endif %}
 
@@ -57,14 +76,16 @@
       </div>
     </div>
     <div>
+      {% if proposals_visibility == 'full' %}
       <div class="section">
-        <h2>Proposal follow-ups due <span class="count">({{ proposal_follow_ups|length }})</span></h2>
+        <h2>Proposals overdue for follow-up <span class="count">({{ proposal_follow_ups|length }})</span></h2>
         {% if proposal_follow_ups %}<ul class="rows">{% for p in proposal_follow_ups %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} - {{ p.organisation.legal_name }}<span class="tag warn">{{ p.follow_up_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
       </div>
       <div class="section">
-        <h2>Proposal follow-ups due <span class="count">({{ proposal_followups_due|length }})</span></h2>
+        <h2>Scheduled proposal follow-ups due <span class="count">({{ proposal_followups_due|length }})</span></h2>
         {% if proposal_followups_due %}<ul class="rows">{% for f in proposal_followups_due %}<li><a href="/proposals/{{ f.proposal.pk }}/">{{ f.proposal.proposal_number }} - {{ f.proposal.organisation.legal_name }}<span class="tag warn">Follow-up #{{ f.follow_up_number }} &middot; {{ f.due_date }}</span></a></li>{% endfor %}</ul>{% else %}<div class="empty">No proposal follow-ups due.</div>{% endif %}
       </div>
+      {% endif %}
       {% if can_view_financials %}
       <div class="section">
         <h2>Invoice follow-ups due <span class="count">({{ invoice_followups_due|length }})</span></h2>

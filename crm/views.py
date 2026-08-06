@@ -1,9 +1,10 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.utils import get_user_tenant
+from tenants.utils import get_user_tenant, can_view_proposals, get_dashboard_visibility
 from .models import Organisation, Proposal, Enquiry, Communication, Contact
 
 
@@ -33,6 +34,16 @@ def organisation_detail(request, pk):
 
     tab = request.GET.get("tab", "overview")
 
+    proposals = None
+    proposals_restricted = False
+    if tab == "proposals":
+        if can_view_proposals(request.user):
+            proposals = org.proposals.all()
+        elif get_dashboard_visibility(tenant) == "responsible_for" and org.relationship_owner_id == request.user.id:
+            proposals = org.proposals.all()
+        else:
+            proposals_restricted = True
+
     return render(request, "crm/organisation_detail.html", {
         "active_nav": "organisations",
         "user_tenant": tenant,
@@ -40,7 +51,8 @@ def organisation_detail(request, pk):
         "tab": tab,
         "contacts": org.contacts.all() if tab == "contacts" else None,
         "enquiries": org.enquiries.all() if tab == "enquiries" else None,
-        "proposals": org.proposals.all() if tab == "proposals" else None,
+        "proposals": proposals,
+        "proposals_restricted": proposals_restricted,
         "projects": org.projects.all() if tab == "projects" else None,
     })
 
@@ -49,6 +61,21 @@ def organisation_detail(request, pk):
 def proposal_list(request):
     tenant = get_user_tenant(request)
     proposals = Proposal.objects.filter(tenant=tenant) if tenant else Proposal.objects.none()
+
+    full_access = can_view_proposals(request.user)
+    responsible_only = False
+
+    if not full_access:
+        if get_dashboard_visibility(tenant) == "responsible_for":
+            responsible_only = True
+            proposals = proposals.filter(
+                Q(enquiry__responsible_director=request.user)
+                | Q(organisation__relationship_owner=request.user)
+                | Q(director_approved_by=request.user)
+            ).distinct()
+        else:
+            messages.error(request, "You don't have permission to view Fee Proposals.")
+            return redirect("command_centre")
 
     q = request.GET.get("q", "").strip()
     if q:
@@ -69,6 +96,8 @@ def proposal_list(request):
         "q": q,
         "status": status,
         "status_choices": Proposal.STATUS_CHOICES,
+        "full_access": full_access,
+        "responsible_only": responsible_only,
     })
 
 
@@ -80,7 +109,22 @@ def proposal_detail(request, pk):
         pk=pk, tenant=tenant,
     )
 
+    full_access = can_view_proposals(request.user)
+    is_responsible_for_this_one = (
+        proposal.director_approved_by_id == request.user.id
+        or (proposal.enquiry_id and proposal.enquiry.responsible_director_id == request.user.id)
+        or proposal.organisation.relationship_owner_id == request.user.id
+    )
+
+    if not full_access:
+        if not (get_dashboard_visibility(tenant) == "responsible_for" and is_responsible_for_this_one):
+            messages.error(request, "You don't have permission to view this proposal.")
+            return redirect("command_centre")
+
     if request.method == "POST" and request.POST.get("action") == "action_followup":
+        if not full_access:
+            messages.error(request, "You don't have permission to action proposal follow-ups.")
+            return redirect("proposal_detail", pk=proposal.pk)
         from .models import ProposalFollowUp, add_working_days
         followup_id = request.POST.get("followup_id")
         followup = get_object_or_404(ProposalFollowUp, pk=followup_id, proposal=proposal, tenant=tenant)
@@ -103,7 +147,8 @@ def proposal_detail(request, pk):
         "active_nav": "proposals",
         "user_tenant": tenant,
         "proposal": proposal,
-        "follow_ups": proposal.follow_ups.all(),
+        "follow_ups": proposal.follow_ups.all() if full_access else proposal.follow_ups.none(),
+        "full_access": full_access,
     })
 
 
