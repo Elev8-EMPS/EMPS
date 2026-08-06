@@ -1,10 +1,15 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Team, Modality, UserProfile, ChecklistItemTemplate
 from .utils import get_user_tenant, can_view_confidential
+
+logger = logging.getLogger(__name__)
 
 
 def _require_admin(request):
@@ -50,13 +55,24 @@ def manage_user_create(request):
         role = request.POST.get("role", "")
 
         if username and password and not User.objects.filter(username=username).exists():
-            user = User.objects.create_user(username=username, email=email, password=password, is_staff=True)
-            UserProfile.objects.update_or_create(user=user, defaults={"tenant": tenant, "role": role})
-            team_ids = request.POST.getlist("teams")
-            if team_ids:
-                user.teams.set(team_ids)
-            messages.success(request, f"Created account for {username}.")
-            return redirect("manage_user_edit", pk=user.pk)
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=username, email=email, password=password, is_staff=True
+                    )
+                    UserProfile.objects.create(user=user, tenant=tenant, role=role)
+                    team_ids = request.POST.getlist("teams")
+                    if team_ids:
+                        user.teams.set(team_ids)
+                messages.success(request, f"Created account for {username}.")
+                return redirect("manage_user_edit", pk=user.pk)
+            except Exception:
+                logger.exception("Failed to create user '%s' via Manage", username)
+                messages.error(
+                    request,
+                    "Something went wrong creating that account - nothing was saved, so it's safe to try "
+                    "again. If it keeps happening, let Claude know so it can check the error log.",
+                )
         else:
             messages.error(request, "Username and password are required, and the username must be unique.")
 
@@ -82,14 +98,19 @@ def manage_user_edit(request, pk):
         action = request.POST.get("action")
 
         if action == "update":
-            profile.role = request.POST.get("role", "")
-            profile.save()
-            target_user.email = request.POST.get("email", "").strip()
-            target_user.first_name = request.POST.get("first_name", "").strip()
-            target_user.last_name = request.POST.get("last_name", "").strip()
-            target_user.teams.set(request.POST.getlist("teams"))
-            target_user.save()
-            messages.success(request, "Updated.")
+            try:
+                with transaction.atomic():
+                    profile.role = request.POST.get("role", "")
+                    profile.save()
+                    target_user.email = request.POST.get("email", "").strip()
+                    target_user.first_name = request.POST.get("first_name", "").strip()
+                    target_user.last_name = request.POST.get("last_name", "").strip()
+                    target_user.teams.set(request.POST.getlist("teams"))
+                    target_user.save()
+                messages.success(request, "Updated.")
+            except Exception:
+                logger.exception("Failed to update user '%s' via Manage", target_user.username)
+                messages.error(request, "Something went wrong saving those changes - nothing was updated, try again.")
 
         elif action == "reset_password":
             new_password = request.POST.get("new_password", "").strip()
@@ -127,11 +148,16 @@ def manage_team_create(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         if name:
-            team = Team.objects.create(tenant=tenant, name=name)
-            team.members.set(request.POST.getlist("members"))
-            team.modalities.set(request.POST.getlist("modalities"))
-            messages.success(request, f"Created team '{name}'.")
-            return redirect("manage_team_edit", pk=team.pk)
+            try:
+                with transaction.atomic():
+                    team = Team.objects.create(tenant=tenant, name=name)
+                    team.members.set(request.POST.getlist("members"))
+                    team.modalities.set(request.POST.getlist("modalities"))
+                messages.success(request, f"Created team '{name}'.")
+                return redirect("manage_team_edit", pk=team.pk)
+            except Exception:
+                logger.exception("Failed to create team '%s' via Manage", name)
+                messages.error(request, "Something went wrong creating that team - nothing was saved, try again.")
 
     return render(request, "tenants/manage_team_create.html", {
         "active_nav": "manage",
@@ -152,11 +178,16 @@ def manage_team_edit(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "update":
-            team.name = request.POST.get("name", team.name).strip()
-            team.members.set(request.POST.getlist("members"))
-            team.modalities.set(request.POST.getlist("modalities"))
-            team.save()
-            messages.success(request, "Team updated.")
+            try:
+                with transaction.atomic():
+                    team.name = request.POST.get("name", team.name).strip()
+                    team.members.set(request.POST.getlist("members"))
+                    team.modalities.set(request.POST.getlist("modalities"))
+                    team.save()
+                messages.success(request, "Team updated.")
+            except Exception:
+                logger.exception("Failed to update team '%s' via Manage", team.name)
+                messages.error(request, "Something went wrong saving those changes - nothing was updated, try again.")
         elif action == "delete":
             team.delete()
             messages.success(request, "Team deleted.")
