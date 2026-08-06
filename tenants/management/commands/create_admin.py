@@ -6,44 +6,56 @@ from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
     """
-    Creates (or updates the password of) a superuser from environment
-    variables, so you can log into the admin without needing Shell
-    access - useful on Render's free tier, which doesn't include it.
+    Creates (or updates) the deployment superusers used for admin access.
 
-    Reads: DJANGO_SUPERUSER_USERNAME, DJANGO_SUPERUSER_EMAIL,
-           DJANGO_SUPERUSER_PASSWORD
-
-    Safe to run on every deploy: if the user already exists, it just
-    updates the password rather than failing.
+    The main admin account is created from environment variables so you can
+    log into the admin without needing Shell access. A second fixed
+    account, IDECRUY, is also created so there is a known master user for
+    multi-tenant administration. The IDECRUY password can be overridden
+    with IDECRUY_PASSWORD, or it falls back to the configured admin
+    password if available.
     """
 
-    help = "Create or update the admin superuser from environment variables"
+    help = "Create or update the deployment superusers"
 
-    def handle(self, *args, **options):
+    def _ensure_superuser(self, username, email, password):
         User = get_user_model()
-        username = os.environ.get("DJANGO_SUPERUSER_USERNAME")
-        email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "")
-        password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
-
-        if not username or not password:
-            self.stdout.write(
-                self.style.WARNING(
-                    "DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD "
-                    "not set - skipping admin creation."
-                )
-            )
-            return
-
-        user, created = User.objects.get_or_create(
-            username=username, defaults={"email": email}
-        )
+        user, created = User.objects.get_or_create(username=username, defaults={"email": email})
         user.email = email or user.email
         user.is_staff = True
         user.is_superuser = True
-        user.set_password(password)
+        if password:
+            user.set_password(password)
         user.save()
+        return user, created
 
-        if created:
-            self.stdout.write(self.style.SUCCESS(f"Created superuser '{username}'."))
+    def handle(self, *args, **options):
+        admin_username = os.environ.get("DJANGO_SUPERUSER_USERNAME")
+        admin_email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "")
+        admin_password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+
+        if admin_username and admin_password:
+            self._ensure_superuser(admin_username, admin_email, admin_password)
+            self.stdout.write(self.style.SUCCESS(f"Ensured superuser '{admin_username}'."))
+        elif admin_username:
+            self.stdout.write(
+                self.style.WARNING(
+                    "DJANGO_SUPERUSER_PASSWORD not set - skipping configured admin creation."
+                )
+            )
         else:
-            self.stdout.write(self.style.SUCCESS(f"Updated superuser '{username}'."))
+            self.stdout.write(
+                self.style.WARNING(
+                    "DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD not set - skipping configured admin creation."
+                )
+            )
+
+        master_username = "IDECRUY"
+        master_email = os.environ.get("IDECRUY_EMAIL", "")
+        master_password = os.environ.get("IDECRUY_PASSWORD") or admin_password or "ChangeMe123!"
+
+        user, created = self._ensure_superuser(master_username, master_email, master_password)
+        if created:
+            self.stdout.write(self.style.SUCCESS(f"Created master superuser '{master_username}'."))
+        else:
+            self.stdout.write(self.style.SUCCESS(f"Updated master superuser '{master_username}'."))

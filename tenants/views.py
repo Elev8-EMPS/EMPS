@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from .models import Modality, Team, UserProfile
 from .utils import get_user_tenant, is_tenant_admin
@@ -73,6 +74,16 @@ def _sync_user_teams(user, tenant, team_ids):
             team.members.remove(user)
 
 
+def _ensure_user_2fa(user, enable_2fa):
+    """Create a pending TOTP device when an admin enables 2FA setup for a user."""
+    if not enable_2fa:
+        return False
+    if TOTPDevice.objects.filter(user=user).exists():
+        return False
+    TOTPDevice.objects.create(user=user, name=f"{user.username}-totp", confirmed=False)
+    return True
+
+
 @tenant_admin_required
 def manage_user_create(request):
     tenant = get_user_tenant(request)
@@ -85,6 +96,7 @@ def manage_user_create(request):
         password = request.POST.get("password", "")
         role = request.POST.get("role", "")
         make_tenant_admin = request.POST.get("is_tenant_admin") == "on"
+        enable_2fa = request.POST.get("enable_2fa") == "on"
         team_ids = [int(x) for x in request.POST.getlist("teams")]
 
         errors = []
@@ -97,17 +109,23 @@ def manage_user_create(request):
 
         if not errors:
             user = User.objects.create_user(
-                username=username, email=email, password=password,
-                first_name=first_name, last_name=last_name,
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
             )
-            # The post_save signal already created a blank profile.
-            profile = user.profile
+            profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.tenant = tenant
             profile.role = role
             profile.is_tenant_admin = make_tenant_admin
             profile.save()
             _sync_user_teams(user, tenant, team_ids)
-            messages.success(request, f"{username} has been added.")
+            enabled_2fa = _ensure_user_2fa(user, enable_2fa)
+            if enabled_2fa:
+                messages.success(request, f"{username} has been added and 2FA setup is now enabled for them.")
+            else:
+                messages.success(request, f"{username} has been added.")
             return redirect("manage_user_list")
 
         for e in errors:

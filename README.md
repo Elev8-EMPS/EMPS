@@ -22,13 +22,18 @@ you expand to more companies later.
 ## Run it locally
 
 ```bash
+# Use Python 3.12 (recommended for this project)
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py create_admin
+python manage.py backfill_user_profiles
 python manage.py createsuperuser
 python manage.py runserver
 ```
+
+If you are using pyenv or another version manager, this repo now includes a [.python-version](.python-version) file that pins Python 3.12.
 
 Visit `http://127.0.0.1:8000/admin/` and log in with the superuser you
 just created. Before you can add Organisations, Projects, etc., create
@@ -49,6 +54,10 @@ depends on it.
    python manage.py createsuperuser
    ```
    so you have a login for the deployed admin site.
+
+   The deployment bootstrap also creates a master superuser account named `IDECRUY` (password from `IDECRUY_PASSWORD`, or `ChangeMe123!` by default) so there is a known account for multi-tenant administration. Change that password as soon as you first log in.
+
+   For the 2FA verification page, the device-trust checkbox keeps the current browser trusted for `TRUSTED_DEVICE_HOURS` hours (default: `24`). You can override that in Render's environment variables if you want a longer or shorter trust window.
 
 Your app will be live at `https://epms-XXXX.onrender.com` (Render
 assigns the exact subdomain). It's on HTTPS by default.

@@ -3,6 +3,7 @@ import io
 import secrets
 
 import qrcode
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
@@ -124,12 +125,17 @@ def verify_2fa(request):
 
     if request.method == "POST":
         token = request.POST.get("token", "").strip()
+        trust_device = request.POST.get("trust_device") == "on"
         device = match_token(request.user, token)
         if device is not None:
             otp_login(request, device)
             response = redirect(next_url)
-            set_trusted_device_cookie(response, request.user)
+            if trust_device:
+                set_trusted_device_cookie(response, request.user)
             return response
         messages.error(request, "That code wasn't recognised - check your authenticator app, or use a backup code.")
 
-    return render(request, "security/verify_2fa.html", {"next": next_url})
+    return render(request, "security/verify_2fa.html", {
+        "next": next_url,
+        "trusted_device_hours": settings.TRUSTED_DEVICE_HOURS,
+    })

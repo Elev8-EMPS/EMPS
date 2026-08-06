@@ -71,11 +71,17 @@
             {% endfor %}
           </select>
         </div>
-        <div style="display:flex; align-items:flex-end;">
-          <label style="display:flex; align-items:center; gap:8px; font-size:14px; padding-bottom:11px;">
+        <div style="display:flex; flex-direction:column; gap:10px; justify-content:flex-end;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
             <input type="checkbox" name="is_tenant_admin" {% if profile.is_tenant_admin %}checked{% endif %}>
             Tenant Admin - can manage Users, Teams and Modalities here
           </label>
+          {% if is_new %}
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+            <input type="checkbox" name="enable_2fa" value="on" {% if form_values.enable_2fa == 'on' %}checked{% endif %}>
+            Enable 2FA setup for this user
+          </label>
+          {% endif %}
         </div>
       </div>
 
