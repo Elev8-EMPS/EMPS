@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Communications - EPMS{% endblock %}
+{% block header %}Communications{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search subject or notes...">
+    <select name="type" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All types</option>
+      {% for value, label in type_choices %}<option value="{{ value }}" {% if comm_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="project" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.pk }}" {% if project_id == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.project_number }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter</button>
+    <a href="/communications/new/" class="btn" style="background:var(--ok); margin-left:auto;">+ Log communication</a>
+  </form>
+</div>
+
+{% if communications %}
+<table class="list">
+  <tr><th>Subject</th><th>Type</th><th>Project</th><th>Organisation</th><th>Date</th><th>Logged by</th></tr>
+  {% for c in communications %}
+  <tr>
+    <td><a href="/communications/{{ c.pk }}/">{{ c.subject|default:"(no subject)" }}</a></td>
+    <td><span class="tag">{{ c.get_communication_type_display }}{% if c.direction %} &middot; {{ c.get_direction_display }}{% endif %}</span></td>
+    <td>{% if c.related_project %}{{ c.related_project.project_number }}{% else %}—{% endif %}</td>
+    <td>{{ c.organisation.legal_name|default:"—" }}</td>
+    <td>{{ c.occurred_at|date:"Y-m-d H:i" }}</td>
+    <td>{{ c.logged_by.username|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q or comm_type or project_id %}No communications match these filters.{% else %}No communications logged yet. <a href="/communications/new/">Log one</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

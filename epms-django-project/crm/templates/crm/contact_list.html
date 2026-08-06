@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Contacts - EPMS{% endblock %}
+{% block header %}Contacts{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by company or person's name, email, or mobile...">
+    <select name="organisation" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All organisations</option>
+      {% for o in organisations %}<option value="{{ o.pk }}" {% if org_id == o.pk|stringformat:"s" %}selected{% endif %}>{{ o.legal_name }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Search</button>
+    <a href="/admin/crm/contact/add/" class="btn" style="background:var(--ok); margin-left:auto;">+ New contact</a>
+  </form>
+</div>
+
+{% if org_groups or unaffiliated %}
+  {% for group in org_groups %}
+  <div class="section">
+    <h2><a href="/organisations/{{ group.organisation.pk }}/" style="color:inherit; text-decoration:none;">{{ group.organisation.legal_name }}</a> <span class="count">({{ group.contacts.count }})</span></h2>
+    {% if group.contacts %}
+    <ul class="rows">
+      {% for c in group.contacts %}
+      <li><a href="/contacts/{{ c.pk }}/">{{ c.first_name }} {{ c.last_name }} <span class="tag">{{ c.job_title|default:"" }}{% if c.email %} &middot; {{ c.email }}{% endif %}{% if c.mobile %} &middot; {{ c.mobile }}{% endif %}</span></a></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="empty">No contacts recorded for this organisation yet.</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  {% if unaffiliated %}
+  <div class="section">
+    <h2>No organisation <span class="count">({{ unaffiliated|length }})</span></h2>
+    <ul class="rows">
+      {% for c in unaffiliated %}
+      <li><a href="/contacts/{{ c.pk }}/">{{ c.first_name }} {{ c.last_name }} <span class="tag">{{ c.job_title|default:"" }}{% if c.email %} &middot; {{ c.email }}{% endif %}</span></a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+{% else %}
+<div class="section"><div class="empty">
+  {% if q or org_id %}No companies or people match "{{ q }}".{% else %}No contacts yet. <a href="/admin/crm/contact/add/">Add one</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

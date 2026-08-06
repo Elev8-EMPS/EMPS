@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_number }} - EPMS{% endblock %}
+{% block header %}{{ project.project_number }}{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ project.name }}</h1>
+  <div class="meta">
+    {{ project.project_number }} &middot; {{ project.client_organisation.legal_name }}
+    &middot; <span class="tag {% if project.status == 'at_risk' %}danger{% elif project.status == 'active' %}ok{% endif %}">{{ project.get_status_display }}</span>
+    &middot; <a href="/admin/delivery/project/{{ project.pk }}/change/">Edit in Admin</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="?tab=overview" class="{% if tab == 'overview' %}active{% endif %}">Overview</a>
+  <a href="?tab=milestones" class="{% if tab == 'milestones' %}active{% endif %}">Milestones ({{ project.milestones.count }})</a>
+  <a href="?tab=tasks" class="{% if tab == 'tasks' %}active{% endif %}">Tasks ({{ project.tasks.count }})</a>
+  <a href="?tab=documents" class="{% if tab == 'documents' %}active{% endif %}">Documents ({{ project.documents.count }})</a>
+  <a href="?tab=finance" class="{% if tab == 'finance' %}active{% endif %}">Finance ({{ project.invoices.count }})</a>
+  <a href="?tab=communications" class="{% if tab == 'communications' %}active{% endif %}">Communications ({{ project.communications.count }})</a>
+  <a href="?tab=checklist" class="{% if tab == 'checklist' %}active{% endif %}">Checklist ({{ project.checklist_items.count }})</a>
+  <a href="?tab=people" class="{% if tab == 'people' %}active{% endif %}">People ({{ project.stakeholders.count }})</a>
+</div>
+
+{% if tab == 'overview' %}
+<div class="section">
+  <h2>Overview</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Address</div><div>{{ project.address|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Project manager</div><div>{{ project.project_manager.username|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Director</div><div>{{ project.director.username|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Original fee</div><div>{% if can_view_fee_amounts %}{% if project.original_fee %}${{ project.original_fee }}{% else %}—{% endif %}{% else %}Not visible to your role{% endif %}</div></div>
+    <div class="field-row"><div class="k">Start date</div><div>{{ project.start_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Target completion</div><div>{{ project.target_completion_date|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Completion date</div><div>{{ project.completion_date|default:"—" }}</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Open to-dos <span class="count">({{ open_todos|length }})</span></h2>
+  {% if open_todos %}<ul class="rows">{% for t in open_todos %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{% if t.assigned_team %}{{ t.assigned_team.name }}{% elif t.owner %}{{ t.owner.username }}{% else %}Unassigned{% endif %} &middot; {{ t.due_date|default:"no due date" }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No open to-dos on this project.</div>{% endif %}
+</div>
+
+<div class="section">
+  <h2>Checklist</h2>
+  <div style="padding:18px;">
+    {% if checklist_summary.total %}
+      <p style="margin:0 0 10px;">{{ checklist_summary.done }} of {{ checklist_summary.total }} items complete.
+        <a href="?tab=checklist">View checklist &rarr;</a></p>
+    {% else %}
+      <p style="margin:0;">No checklist yet. <a href="?tab=checklist">Set one up &rarr;</a></p>
+    {% endif %}
+  </div>
+</div>
+
+{% elif tab == 'milestones' %}
+<div class="section">
+  <h2>Milestones</h2>
+  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No milestones yet. Add one via <a href="/admin/delivery/milestone/add/">Admin</a>.</div>{% endif %}
+</div>
+
+{% elif tab == 'tasks' %}
+<div class="section">
+  <h2>Tasks</h2>
+  {% if tasks %}<ul class="rows">{% for t in tasks %}<li><a href="/tasks/{{ t.pk }}/">{{ t.title }} <span class="tag {% if t.priority == 'critical' %}danger{% elif t.priority == 'high' %}warn{% endif %}">{{ t.get_status_display }} &middot; {{ t.get_priority_display }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No tasks yet.</div>{% endif %}
+</div>
+
+{% elif tab == 'documents' %}
+<div class="section">
+  <h2>Documents</h2>
+  {% if documents %}<ul class="rows">{% for d in documents %}<li><a href="/documents/{{ d.pk }}/">{{ d.display_name|default:d.original_filename }} <span class="tag">{{ d.category|default:"" }} &middot; v{{ d.version }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No documents yet.</div>{% endif %}
+</div>
+
+{% elif tab == 'finance' %}
+{% if can_view_financials %}
+<div class="section">
+  <h2>Invoices</h2>
+  {% if invoices %}<ul class="rows">{% for i in invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} <span class="tag {% if i.status == 'paid' %}ok{% elif i.status == 'overdue' %}danger{% endif %}">{{ i.get_status_display }} &middot; ${{ i.outstanding_amount }} outstanding</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No invoices yet. Add one via <a href="/admin/finance/invoice/add/?project={{ project.pk }}&organisation={{ project.client_organisation.pk }}">Admin</a>.</div>{% endif %}
+</div>
+{% else %}
+<div class="section"><div class="empty">You don't have permission to view financial information.</div></div>
+{% endif %}
+
+{% elif tab == 'communications' %}
+<div class="section" style="text-align:right;">
+  <div style="padding:14px 18px;">
+    <a class="btn" style="background:var(--ok);" href="/communications/new/?project={{ project.pk }}">+ Log communication</a>
+  </div>
+</div>
+<div class="section">
+  <h2>Communications</h2>
+  {% if communications %}<ul class="rows">{% for c in communications %}<li><a href="/communications/{{ c.pk }}/">{{ c.subject|default:c.get_communication_type_display }} <span class="tag">{{ c.get_communication_type_display }} &middot; {{ c.occurred_at|date:"Y-m-d" }}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No communications logged for this project yet.</div>{% endif %}
+</div>
+
+{% elif tab == 'checklist' %}
+
+{% if scope_additions %}
+<div class="section">
+  <h2>Scope &amp; budget</h2>
+  <ul class="rows">
+    {% for a in scope_additions %}
+    <li>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span>
+          <strong>{{ a.full_code }}</strong> &middot; {{ a.modality.name }}
+          {% if a.is_original_scope %}<span class="tag">Original scope</span>{% else %}<span class="tag warn">Added {{ a.added_at|date:"Y-m-d" }}</span>{% endif %}
+        </span>
+        {% if can_view_financials %}
+        <form method="post" style="display:flex; gap:6px; align-items:center;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_scope_budget">
+          <input type="hidden" name="addition_id" value="{{ a.pk }}">
+          <span style="font-size:13px; color:var(--muted);">Budget: $</span>
+          <input type="number" step="0.01" name="budget_amount" value="{{ a.budget_amount|default_if_none:'' }}" placeholder="0.00" style="width:110px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">Save</button>
+        </form>
+        {% elif a.budget_amount %}
+        <span style="font-size:13px; color:var(--muted);">Budget set</span>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if checklist_progress.total %}
+<div class="section">
+  <div style="padding:16px 18px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+      <strong>{{ checklist_progress.done }} of {{ checklist_progress.total }} complete</strong>
+      <span>{{ checklist_progress.pct }}%</span>
+    </div>
+    <div style="background:#f0f0f0; border-radius:999px; height:8px; overflow:hidden;">
+      <div style="background:var(--ok); height:100%; width:{{ checklist_progress.pct }}%;"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% regroup checklist_items by modality as modality_groups %}
+{% for group in modality_groups %}
+<div class="section">
+  <h2>{{ group.grouper.name|default:"General" }}</h2>
+  <ul class="rows">
+    {% for item in group.list %}
+    <li style="display:flex; align-items:center; gap:10px;">
+      <form method="post" action="/checklist-items/{{ item.pk }}/toggle/" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="border:none; background:none; cursor:pointer; padding:0; font-size:16px;">
+          {% if item.is_done %}&#9745;{% else %}&#9744;{% endif %}
+        </button>
+      </form>
+      <span style="{% if item.is_done %}text-decoration:line-through; color:var(--muted);{% endif %} flex:1;">{{ item.text }}</span>
+      {% if item.is_done %}<span class="tag ok" style="font-size:10.5px;">{{ item.done_by.username }} &middot; {{ item.done_at|date:"Y-m-d" }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% empty %}
+<div class="section"><div class="empty">No checklist items yet — add a modality below to generate one.</div></div>
+{% endfor %}
+
+{% if available_optional_items %}
+<div class="section">
+  <h2>Optional items available to add</h2>
+  <ul class="rows">
+    {% for tmpl in available_optional_items %}
+    <li style="display:flex; justify-content:space-between; align-items:center;">
+      <span>{{ tmpl.text }} <span class="tag">{{ tmpl.modality.name }}</span></span>
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_optional_item">
+        <input type="hidden" name="template_id" value="{{ tmpl.pk }}">
+        <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">+ Add</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="section">
+  <h2>Add a custom item</h2>
+  <div style="padding:18px;">
+    <form method="post" style="display:flex; gap:10px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_custom_item">
+      <input type="text" name="custom_text" placeholder="Type a checklist item specific to this project..." required style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <button type="submit" class="btn">Add</button>
+    </form>
+  </div>
+</div>
+
+{% if available_modalities %}
+<div class="section">
+  <h2>Add a modality</h2>
+  <div style="padding:18px;">
+    <form method="post" style="display:flex; gap:10px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_modality">
+      <select name="modality" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        {% for m in available_modalities %}<option value="{{ m.pk }}">{{ m.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn">Add</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% elif tab == 'people' %}
+
+<div class="section">
+  <h2>Organisations</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Client</div><div><a href="/organisations/{{ project.client_organisation.pk }}/">{{ project.client_organisation.legal_name }}</a></div></div>
+    <div class="field-row"><div class="k">Billing entity</div><div>{% if project.billing_organisation %}<a href="/organisations/{{ project.billing_organisation.pk }}/">{{ project.billing_organisation.legal_name }}</a>{% else %}Same as client{% endif %}</div></div>
+    {% if project.original_proposal %}<div class="field-row"><div class="k">Requested via</div><div><a href="/proposals/{{ project.original_proposal.pk }}/">{{ project.original_proposal.proposal_number }}</a> ({{ project.original_proposal.organisation.legal_name }})</div></div>{% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h2>Stakeholders</h2>
+  {% if stakeholders %}
+  <ul class="rows">
+    {% for s in stakeholders %}
+    <li>
+      <a href="/stakeholders/{{ s.pk }}/edit/" style="display:block;">
+        <strong>{{ s.get_role_display }}</strong>: {{ s.display_name }}{% if s.contact %} <span class="tag">Linked contact</span>{% endif %}
+        {% if s.contact %}
+          {% if s.contact.organisation %}({{ s.contact.organisation.legal_name }}){% endif %}
+          {% if s.contact.email %}<span class="tag">{{ s.contact.email }}</span>{% endif %}
+          {% if s.contact.mobile %}<span class="tag">{{ s.contact.mobile }}</span>{% endif %}
+        {% else %}
+          {% if s.external_company %}({{ s.external_company }}){% endif %}
+          {% if s.external_email %}<span class="tag">{{ s.external_email }}</span>{% endif %}
+          {% if s.external_phone %}<span class="tag">{{ s.external_phone }}</span>{% endif %}
+        {% endif %}
+        {% if s.notes %}<div style="margin-top:4px; font-size:13px; color:var(--muted);">{{ s.notes }}</div>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<div class="empty">No stakeholders added yet.</div>{% endif %}
+</div>
+
+{% if archived_stakeholders %}
+<div class="section">
+  <h2>Archived <span class="count">({{ archived_stakeholders|length }})</span></h2>
+  <ul class="rows">
+    {% for s in archived_stakeholders %}
+    <li><a href="/stakeholders/{{ s.pk }}/edit/" style="color:var(--muted);">{{ s.get_role_display }}: {{ s.display_name }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="section">
+  <h2>Add a stakeholder</h2>
+  <div style="padding:18px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_stakeholder">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Role</label>
+          <select name="role" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="" selected disabled>— Select their role —</option>
+            <option value="requesting_contact">Requesting contact</option>
+            <option value="client_contact">Client contact</option>
+            <option value="billing_contact">Billing contact</option>
+            <option value="architect">Architect</option>
+            <option value="builder">Builder</option>
+            <option value="designer">Designer</option>
+            <option value="consultant">Consultant</option>
+            <option value="authority_contact">Authority contact</option>
+            <option value="site_contact">Site contact</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Existing contact (optional)</label>
+          <select name="contact" id="stakeholder-contact-select" onchange="toggleStakeholderExternalFields(this)" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None, use fields below —</option>
+            {% for c in available_contacts %}<option value="{{ c.pk }}">{{ c.first_name }} {{ c.last_name }}{% if c.organisation %} ({{ c.organisation.legal_name }}){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <p style="font-size:13px; color:var(--muted); margin:-8px 0 12px;">If this person isn't in your Contacts yet (e.g. an external architect or builder), just fill in the fields below instead:</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <input type="text" name="external_name" placeholder="Name" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_company" placeholder="Company" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="email" name="external_email" placeholder="Email" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="external_phone" placeholder="Phone" class="stakeholder-external-field" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <textarea name="notes" rows="2" placeholder="Notes (optional)" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:14px;"></textarea>
+      <button type="submit" class="btn">Add stakeholder</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleStakeholderExternalFields(select) {
+  var fields = document.querySelectorAll('.stakeholder-external-field');
+  var contactChosen = !!select.value;
+  fields.forEach(function(f) {
+    f.disabled = contactChosen;
+    if (contactChosen) f.value = '';
+  });
+}
+</script>
+
+{% endif %}
+
+{% endblock %}

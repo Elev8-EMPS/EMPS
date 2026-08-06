@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Two-Factor Authentication - EPMS{% endblock %}
+{% block header %}Two-Factor Authentication{% endblock %}
+{% block content %}
+
+{% if new_backup_codes %}
+<div class="section" style="border-left:3px solid var(--warn);">
+  <h2>Your backup codes - save these now</h2>
+  <div style="padding:18px;">
+    <p style="margin-top:0;">Each code works <strong>once</strong>, to get back into your account if you lose your phone. Save them somewhere safe (a password manager, printed and locked away) - this is the only time they'll be shown in full.</p>
+    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; font-family:monospace; font-size:15px; background:#fafafa; border:1px solid var(--border); border-radius:8px; padding:16px;">
+      {% for code in new_backup_codes %}<div>{{ code }}</div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if existing_device %}
+<div class="section">
+  <h2>Status</h2>
+  <div style="padding:18px;">
+    <p style="margin-top:0;">Two-factor authentication is <strong style="color:var(--ok);">set up and confirmed</strong> on this account, using an authenticator app.</p>
+    <p>Backup codes remaining: <strong>{{ backup_codes_remaining }}</strong> of 10.
+      {% if backup_codes_remaining <= 2 %}<span class="tag danger">Running low - regenerate soon</span>{% endif %}</p>
+
+    <form method="post" action="/security/regenerate-backup-codes/" style="display:inline-block; margin-right:10px;" onsubmit="return confirm('Generate new backup codes? Your existing codes will stop working.');">
+      {% csrf_token %}
+      <button type="submit" class="btn">Regenerate backup codes</button>
+    </form>
+    <form method="post" action="/security/remove-2fa/" style="display:inline-block;" onsubmit="return confirm('Remove two-factor authentication from your account?');">
+      {% csrf_token %}
+      <button type="submit" class="btn" style="background:var(--danger);">Remove two-factor authentication</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="section">
+  <h2>Set up an authenticator app</h2>
+  <div style="padding:18px;">
+    <p style="margin-top:0;">Scan this QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.), then enter the 6-digit code it shows you below to confirm it's working.</p>
+    <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR code" style="display:block; margin:16px 0; border:1px solid var(--border); border-radius:8px; padding:12px; background:#fff;">
+    <p style="font-size:13px; color:var(--muted);">Can't scan? Enter this key manually in your app: <code>{{ pending_device.key }}</code></p>
+
+    <form method="post" style="margin-top:20px; display:flex; gap:10px; align-items:center;">
+      {% csrf_token %}
+      <input type="hidden" name="device_id" value="{{ pending_device.id }}">
+      <input type="text" name="token" placeholder="6-digit code" maxlength="6" pattern="[0-9]{6}" required style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; width:160px;">
+      <button type="submit" class="btn">Confirm</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="section">
+  <div class="empty">
+    This is currently self-service and optional — nothing requires a confirmed device yet. Once set up here, an administrator can later require it for the whole account.
+  </div>
+</div>
+
+{% endblock %}

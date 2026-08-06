@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Organisations - EPMS{% endblock %}
+{% block header %}Organisations{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search organisations by name...">
+  </form>
+</div>
+
+{% if organisations %}
+<table class="list">
+  <tr><th>Name</th><th>Status</th><th>Industry</th><th>VIP</th><th>Last contact</th></tr>
+  {% for org in organisations %}
+  <tr>
+    <td><a href="/organisations/{{ org.pk }}/">{{ org.legal_name }}</a></td>
+    <td><span class="tag {% if org.client_status == 'active' %}ok{% endif %}">{{ org.get_client_status_display }}</span></td>
+    <td>{{ org.industry|default:"—" }}</td>
+    <td>{{ org.vip_level|default:"—" }}</td>
+    <td>{{ org.last_contact|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q %}No organisations match "{{ q }}".{% else %}No organisations yet. Add one via <a href="/admin/crm/organisation/add/">Admin</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

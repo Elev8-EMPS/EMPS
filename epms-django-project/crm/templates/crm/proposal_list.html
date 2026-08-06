@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Fee Proposals - EPMS{% endblock %}
+{% block header %}Fee Proposals{% endblock %}
+{% block content %}
+
+{% if responsible_only %}
+<div class="section" style="border-left:3px solid var(--warn);">
+  <div style="padding:14px 18px; font-size:14px;">
+    You don't have full Fee Proposal access, so this only shows proposals you're personally
+    responsible for. Fee amounts aren't shown.
+  </div>
+</div>
+{% endif %}
+
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by proposal number or client...">
+    <select name="status" onchange="this.form.submit()" style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter</button>
+  </form>
+</div>
+
+{% if proposals %}
+<table class="list">
+  <tr><th>Proposal</th><th>Client</th><th>Status</th><th>Fee</th><th>Issue date</th><th>Follow-up due</th></tr>
+  {% for p in proposals %}
+  <tr>
+    <td><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }}</a></td>
+    <td>{{ p.organisation.legal_name }}</td>
+    <td><span class="tag {% if p.status == 'accepted' %}ok{% elif p.status == 'declined' or p.status == 'lost' %}danger{% elif p.status == 'follow_up_due' %}warn{% endif %}">{{ p.get_status_display }}</span></td>
+    <td>{% if full_access %}{% if p.fee_amount %}${{ p.fee_amount }}{% else %}—{% endif %}{% else %}Not visible{% endif %}</td>
+    <td>{{ p.issue_date|default:"—" }}</td>
+    <td>{{ p.follow_up_date|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q or status %}No proposals match these filters.{% elif responsible_only %}No proposals you're responsible for yet.{% else %}No proposals yet. Add one via <a href="/admin/crm/proposal/add/">Admin</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

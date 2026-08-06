@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Manage Modalities - EPMS{% endblock %}
+{% block header %}Manage &rsaquo; Modalities{% endblock %}
+{% block content %}
+
+<div class="searchbar">
+  <form style="display:flex; gap:10px;">
+    <a href="/manage/modalities/new/" class="btn" style="background:var(--ok); margin-left:auto;">+ New modality</a>
+  </form>
+</div>
+
+{% if modalities %}
+<table class="list">
+  <tr><th>Modality</th><th>Code</th><th>Teams covering it</th></tr>
+  {% for m in modalities %}
+  <tr>
+    <td><a href="/manage/modalities/{{ m.pk }}/">{{ m.name }}</a></td>
+    <td>{{ m.code|default:"—" }}</td>
+    <td>{{ m.teams.count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">No modalities yet - add the first one above.</div></div>
+{% endif %}
+
+{% endblock %}

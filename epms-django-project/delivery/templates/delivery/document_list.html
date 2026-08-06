@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Documents - EPMS{% endblock %}
+{% block header %}Documents{% endblock %}
+{% block content %}
+<div class="searchbar">
+  <form method="get" style="display:flex; gap:10px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by document name...">
+    <button class="btn" type="submit">Search</button>
+    <a href="/admin/delivery/document/add/" class="btn" style="background:var(--ok); margin-left:auto;">+ Upload document</a>
+  </form>
+</div>
+
+{% if documents %}
+<table class="list">
+  <tr><th>Document</th><th>Project</th><th>Category</th><th>Version</th><th>Uploaded</th></tr>
+  {% for d in documents %}
+  <tr>
+    <td><a href="/documents/{{ d.pk }}/">{{ d.display_name|default:d.original_filename }}</a></td>
+    <td>{% if d.related_project %}{{ d.related_project.project_number }}{% else %}—{% endif %}</td>
+    <td>{{ d.category|default:"—" }}</td>
+    <td>v{{ d.version }}</td>
+    <td>{{ d.uploaded_at|date:"Y-m-d" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">
+  {% if q %}No documents match "{{ q }}".{% else %}No documents yet. Add one via <a href="/admin/delivery/document/add/">Admin</a>.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

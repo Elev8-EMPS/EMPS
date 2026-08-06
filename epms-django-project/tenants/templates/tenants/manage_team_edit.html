@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ team.name }} - EPMS{% endblock %}
+{% block header %}{{ team.name }}{% endblock %}
+{% block content %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update">
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Team name</label>
+        <input type="text" name="name" value="{{ team.name }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Members</label>
+          {% for u in users %}<label style="display:block; font-size:14px; margin-bottom:4px;"><input type="checkbox" name="members" value="{{ u.pk }}" {% if u.pk in member_ids %}checked{% endif %}> {{ u.username }}</label>{% endfor %}
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Modalities</label>
+          {% for m in modalities %}<label style="display:block; font-size:14px; margin-bottom:4px;"><input type="checkbox" name="modalities" value="{{ m.pk }}" {% if m.pk in modality_ids %}checked{% endif %}> {{ m.name }}</label>{% empty %}<span style="font-size:13px; color:var(--muted);">No modalities yet.</span>{% endfor %}
+        </div>
+      </div>
+      <button type="submit" class="btn">Save changes</button>
+    </form>
+  </div>
+</div>
+<div class="section">
+  <div style="padding:18px;">
+    <form method="post" onsubmit="return confirm('Delete this team? This cannot be undone.');">
+      {% csrf_token %}<input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn" style="background:var(--danger);">Delete team</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Manage - EPMS{% endblock %}
+{% block header %}Manage{% endblock %}
+{% block content %}
+
+<div class="tabs">
+  <a href="?tab=users" class="{% if tab == 'users' %}active{% endif %}">Users</a>
+  <a href="?tab=teams" class="{% if tab == 'teams' %}active{% endif %}">Teams</a>
+  <a href="?tab=modalities" class="{% if tab == 'modalities' %}active{% endif %}">Modalities</a>
+  <a href="?tab=settings" class="{% if tab == 'settings' %}active{% endif %}">Settings</a>
+</div>
+
+{% if tab == 'users' %}
+<div style="text-align:right; margin-bottom:14px;"><a href="/manage/users/new/" class="btn" style="background:var(--ok);">+ New user</a></div>
+<table class="list">
+  <tr><th>Username</th><th>Name</th><th>Role</th><th>Teams</th><th>Fee Proposals</th><th>Status</th></tr>
+  {% for u in users %}
+  <tr>
+    <td><a href="/manage/users/{{ u.pk }}/edit/">{{ u.username }}</a></td>
+    <td>{{ u.first_name }} {{ u.last_name }}</td>
+    <td>{{ u.profile.get_role_display|default:"—" }}</td>
+    <td>{% for t in u.teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+    <td>{% if u.profile.role == 'company_admin' or u.profile.role == 'director' %}<span class="tag ok">Always</span>{% elif u.profile.can_manage_proposals %}<span class="tag ok">Yes</span>{% else %}—{% endif %}</td>
+    <td><span class="tag {% if u.is_active %}ok{% else %}danger{% endif %}">{{ u.is_active|yesno:"Active,Retired" }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% elif tab == 'teams' %}
+<div style="text-align:right; margin-bottom:14px;"><a href="/manage/teams/new/" class="btn" style="background:var(--ok);">+ New team</a></div>
+<table class="list">
+  <tr><th>Team</th><th>Members</th><th>Modalities</th></tr>
+  {% for t in teams %}
+  <tr>
+    <td><a href="/manage/teams/{{ t.pk }}/edit/">{{ t.name }}</a></td>
+    <td>{{ t.members.count }}</td>
+    <td>{% for m in t.modalities.all %}{{ m.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% elif tab == 'modalities' %}
+<div style="text-align:right; margin-bottom:14px;"><a href="/manage/modalities/new/" class="btn" style="background:var(--ok);">+ New modality</a></div>
+<table class="list">
+  <tr><th>Modality</th><th>Code</th><th>Checklist items</th></tr>
+  {% for m in modalities %}
+  <tr>
+    <td><a href="/manage/modalities/{{ m.pk }}/edit/">{{ m.name }}</a></td>
+    <td>{{ m.code|default:"—" }}</td>
+    <td>{{ m.checklist_templates.count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% elif tab == 'settings' %}
+<div class="section">
+  <h2>Fee Proposal visibility</h2>
+  <div style="padding:22px;">
+    <p style="margin-top:0; font-size:13.5px; color:var(--muted);">
+      Controls what people WITHOUT Fee Proposal access see on their Command Centre. Fee amounts
+      are never shown to them either way - this only changes whether they see that a proposal or
+      enquiry they're personally tied to exists at all.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {% for value, label in visibility_choices %}
+      <label style="display:block; margin-bottom:12px; font-size:14px; padding:12px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
+        <input type="radio" name="dashboard_visibility" value="{{ value }}" {% if user_tenant.dashboard_visibility == value %}checked{% endif %}>
+        {{ label }}
+      </label>
+      {% endfor %}
+      <button type="submit" class="btn" style="margin-top:8px;">Save</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

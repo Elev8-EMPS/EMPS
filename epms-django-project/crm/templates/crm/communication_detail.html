@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ comm.subject|default:"Communication" }} - EPMS{% endblock %}
+{% block header %}{{ comm.subject|default:"Communication" }}{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ comm.subject|default:comm.get_communication_type_display }}</h1>
+  <div class="meta">
+    <span class="tag">{{ comm.get_communication_type_display }}{% if comm.direction %} &middot; {{ comm.get_direction_display }}{% endif %}</span>
+    &middot; {{ comm.occurred_at|date:"Y-m-d H:i" }}
+    &middot; <a href="/admin/crm/communication/{{ comm.pk }}/change/">Edit in Admin</a>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Details</h2>
+  <div style="padding:18px;">
+    <div class="field-row"><div class="k">Project</div><div>{% if comm.related_project %}<a href="/projects/{{ comm.related_project.pk }}/">{{ comm.related_project.project_number }} - {{ comm.related_project.name }}</a>{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Organisation</div><div>{% if comm.organisation %}<a href="/organisations/{{ comm.organisation.pk }}/">{{ comm.organisation.legal_name }}</a>{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Contact</div><div>{% if comm.contact %}{{ comm.contact.first_name }} {{ comm.contact.last_name }}{% else %}—{% endif %}</div></div>
+    <div class="field-row"><div class="k">Sender</div><div>{{ comm.sender|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Recipients</div><div>{{ comm.recipients|default:"—" }}</div></div>
+    <div class="field-row"><div class="k">Logged by</div><div>{{ comm.logged_by.username|default:"—" }}</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Content</h2>
+  <div style="padding:18px;">{{ comm.body|default:"—"|linebreaksbr }}</div>
+</div>
+
+{% endblock %}
