@@ -30,7 +30,7 @@
     <div class="field-row"><div class="k">Address</div><div>{{ project.address|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Project manager</div><div>{{ project.project_manager.username|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Director</div><div>{{ project.director.username|default:"—" }}</div></div>
-    <div class="field-row"><div class="k">Original fee</div><div>{% if can_view_fee_amounts %}{% if project.original_fee %}${{ project.original_fee }}{% else %}—{% endif %}{% else %}Not visible to your role{% endif %}</div></div>
+    <div class="field-row"><div class="k">Original fee</div><div>{% if project.original_fee %}${{ project.original_fee }}{% else %}—{% endif %}</div></div>
     <div class="field-row"><div class="k">Start date</div><div>{{ project.start_date|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Target completion</div><div>{{ project.target_completion_date|default:"—" }}</div></div>
     <div class="field-row"><div class="k">Completion date</div><div>{{ project.completion_date|default:"—" }}</div></div>

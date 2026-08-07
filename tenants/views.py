@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant
+from .models import Team, Modality, UserProfile, ChecklistItemTemplate
 from .utils import get_user_tenant, can_view_confidential
 
 logger = logging.getLogger(__name__)
@@ -30,16 +30,6 @@ def manage_hub(request):
     tenant = get_user_tenant(request)
     tab = request.GET.get("tab", "users")
 
-    if request.method == "POST" and tab == "settings":
-        if tenant:
-            visibility = request.POST.get("dashboard_visibility", "restricted")
-            valid_values = {v for v, _ in Tenant.DASHBOARD_VISIBILITY_CHOICES}
-            if visibility in valid_values:
-                tenant.dashboard_visibility = visibility
-                tenant.save()
-                messages.success(request, "Settings saved.")
-        return redirect("/manage/?tab=settings")
-
     return render(request, "tenants/manage_hub.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
@@ -47,7 +37,6 @@ def manage_hub(request):
         "users": User.objects.filter(profile__tenant=tenant).select_related("profile").order_by("username") if tab == "users" else None,
         "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
-        "visibility_choices": Tenant.DASHBOARD_VISIBILITY_CHOICES if tab == "settings" else None,
     })
 
 
@@ -71,10 +60,7 @@ def manage_user_create(request):
                     user = User.objects.create_user(
                         username=username, email=email, password=password, is_staff=True
                     )
-                    UserProfile.objects.create(
-                        user=user, tenant=tenant, role=role,
-                        can_manage_proposals=request.POST.get("can_manage_proposals") == "on",
-                    )
+                    UserProfile.objects.create(user=user, tenant=tenant, role=role)
                     team_ids = request.POST.getlist("teams")
                     if team_ids:
                         user.teams.set(team_ids)
@@ -115,7 +101,6 @@ def manage_user_edit(request, pk):
             try:
                 with transaction.atomic():
                     profile.role = request.POST.get("role", "")
-                    profile.can_manage_proposals = request.POST.get("can_manage_proposals") == "on"
                     profile.save()
                     target_user.email = request.POST.get("email", "").strip()
                     target_user.first_name = request.POST.get("first_name", "").strip()

@@ -2,16 +2,6 @@
 {% block title %}Fee Proposals - EPMS{% endblock %}
 {% block header %}Fee Proposals{% endblock %}
 {% block content %}
-
-{% if responsible_only %}
-<div class="section" style="border-left:3px solid var(--warn);">
-  <div style="padding:14px 18px; font-size:14px;">
-    You don't have full Fee Proposal access, so this only shows proposals you're personally
-    responsible for. Fee amounts aren't shown.
-  </div>
-</div>
-{% endif %}
-
 <div class="searchbar">
   <form method="get" style="display:flex; gap:10px;">
     <input type="text" name="q" value="{{ q }}" placeholder="Search by proposal number or client...">
@@ -33,7 +23,7 @@
     <td><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }}</a></td>
     <td>{{ p.organisation.legal_name }}</td>
     <td><span class="tag {% if p.status == 'accepted' %}ok{% elif p.status == 'declined' or p.status == 'lost' %}danger{% elif p.status == 'follow_up_due' %}warn{% endif %}">{{ p.get_status_display }}</span></td>
-    <td>{% if full_access %}{% if p.fee_amount %}${{ p.fee_amount }}{% else %}—{% endif %}{% else %}Not visible{% endif %}</td>
+    <td>{% if can_view_financials %}{% if p.fee_amount %}${{ p.fee_amount }}{% else %}—{% endif %}{% else %}—{% endif %}</td>
     <td>{{ p.issue_date|default:"—" }}</td>
     <td>{{ p.follow_up_date|default:"—" }}</td>
   </tr>
@@ -41,7 +31,7 @@
 </table>
 {% else %}
 <div class="section"><div class="empty">
-  {% if q or status %}No proposals match these filters.{% elif responsible_only %}No proposals you're responsible for yet.{% else %}No proposals yet. Add one via <a href="/admin/crm/proposal/add/">Admin</a>.{% endif %}
+  {% if q or status %}No proposals match these filters.{% else %}No proposals yet. Add one via <a href="/admin/crm/proposal/add/">Admin</a>.{% endif %}
 </div></div>
 {% endif %}
 {% endblock %}
