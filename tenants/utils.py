@@ -3,6 +3,7 @@ from django.db import models
 
 FINANCIAL_ROLES = {"company_admin", "director", "accounts"}
 CONFIDENTIAL_ROLES = {"company_admin", "director"}
+PROPOSAL_ROLES = {"company_admin", "director"}
 
 
 def get_user_role(user):
@@ -23,6 +24,36 @@ def can_view_confidential(user):
     """Employee records, confidential company documents - admin and
     director only."""
     return get_user_role(user) in CONFIDENTIAL_ROLES
+
+
+def can_view_proposals(user):
+    """Fee Proposals - including fee amounts and (future) proposal
+    letters/templates - are opt-in visible. Company Administrators
+    and Directors always qualify; everyone else needs
+    `can_manage_proposals` explicitly ticked on their profile via
+    Manage. Deliberately separate from `can_view_financials`: an
+    Accounts user sees invoices without automatically seeing fee
+    proposals, and vice versa."""
+    if get_user_role(user) in PROPOSAL_ROLES:
+        return True
+    profile = getattr(user, "profile", None)
+    return bool(profile and profile.can_manage_proposals)
+
+
+def can_view_fee_amounts(user):
+    """Any dollar figure that originates from a fee proposal (a
+    proposal's fee_amount, or a project's original_fee) - visible to
+    anyone who can see financials OR proposals, since Accounts
+    legitimately needs original_fee for reconciliation even without
+    full proposal access."""
+    return can_view_financials(user) or can_view_proposals(user)
+
+
+def get_dashboard_visibility(tenant):
+    """The tenant-level setting controlling what people WITHOUT
+    proposal access see on their Command Centre. Defaults to the
+    strict 'restricted' behaviour if there's no tenant yet."""
+    return tenant.dashboard_visibility if tenant else "restricted"
 
 
 def get_user_tenant(request):

@@ -17,7 +17,9 @@
   <a href="?tab=overview" class="{% if tab == 'overview' %}active{% endif %}">Overview</a>
   <a href="?tab=contacts" class="{% if tab == 'contacts' %}active{% endif %}">Contacts ({{ org.contacts.count }})</a>
   <a href="?tab=enquiries" class="{% if tab == 'enquiries' %}active{% endif %}">Enquiries ({{ org.enquiries.count }})</a>
-  <a href="?tab=proposals" class="{% if tab == 'proposals' %}active{% endif %}">Proposals ({{ org.proposals.count }})</a>
+  {% if can_view_proposals or show_proposals_nav %}
+  <a href="?tab=proposals" class="{% if tab == 'proposals' %}active{% endif %}">Proposals</a>
+  {% endif %}
   <a href="?tab=projects" class="{% if tab == 'projects' %}active{% endif %}">Projects ({{ org.projects.count }})</a>
 </div>
 
@@ -53,7 +55,9 @@
 {% elif tab == 'proposals' %}
 <div class="section">
   <h2>Proposals</h2>
-  {% if proposals %}<ul class="rows">{% for p in proposals %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} <span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
+  {% if proposals_restricted %}
+  <div class="empty">You don't have permission to view this organisation's fee proposals.</div>
+  {% elif proposals %}<ul class="rows">{% for p in proposals %}<li><a href="/proposals/{{ p.pk }}/">{{ p.proposal_number }} <span class="tag">{{ p.get_status_display }}</span></a></li>{% endfor %}</ul>
   {% else %}<div class="empty">No proposals yet.</div>{% endif %}
 </div>
 

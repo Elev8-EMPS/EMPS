@@ -15,6 +15,16 @@ class Tenant(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    DASHBOARD_VISIBILITY_CHOICES = [
+        ("restricted", "Restricted - people without Fee Proposal access see nothing proposal-related"),
+        ("responsible_for", "Responsible for - they also see enquiries/proposals/archived projects "
+                             "they're personally tied to, without fee amounts"),
+    ]
+    dashboard_visibility = models.CharField(
+        max_length=20, choices=DASHBOARD_VISIBILITY_CHOICES, default="restricted",
+        help_text="Controls what people WITHOUT Fee Proposal access see on their Command Centre.",
+    )
+
     def __str__(self):
         return self.name
 
@@ -58,11 +68,12 @@ class UserProfile(models.Model):
     user = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="profile")
     tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="users")
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, blank=True)
-    is_tenant_admin = models.BooleanField(
+    can_manage_proposals = models.BooleanField(
         default=False,
-        help_text="Can manage this tenant's Users, Teams and Modalities from the Manage area, without "
-                   "needing Django's backend admin. Separate from their day-to-day role above - e.g. an "
-                   "Administration user can be a Tenant Admin without being a Director.",
+        help_text="Can see and work with Fee Proposals - fee amounts, follow-ups, and (in future) "
+                   "proposal letters/templates. Company Administrators and Directors always have "
+                   "this regardless of this checkbox; tick it for anyone else who should be able "
+                   "to create or view proposals.",
     )
 
     def __str__(self):
