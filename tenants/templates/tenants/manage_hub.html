@@ -20,7 +20,7 @@
     <td>{{ u.first_name }} {{ u.last_name }}</td>
     <td>{{ u.profile.get_role_display|default:"—" }}</td>
     <td>{% for t in u.teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-    <td>{{ u.profile.direct_manager.get_full_name|default:u.profile.direct_manager.username|default:"—" }}</td>
+    <td>{% if u.profile.direct_manager %}{{ u.profile.direct_manager.get_full_name|default:u.profile.direct_manager.username }}{% else %}—{% endif %}</td>
     <td>{% if u.profile.role == 'company_admin' or u.profile.role == 'director' %}<span class="tag ok">Always</span>{% elif u.profile.can_manage_proposals %}<span class="tag ok">Yes</span>{% else %}—{% endif %}</td>
     <td><span class="tag {% if u.is_active %}ok{% else %}danger{% endif %}">{{ u.is_active|yesno:"Active,Retired" }}</span></td>
   </tr>
