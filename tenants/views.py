@@ -157,7 +157,8 @@ def manage_user_edit(request, pk):
                     target_user.last_name = request.POST.get("last_name", "").strip()
                     target_user.teams.set(request.POST.getlist("teams"))
                     target_user.save()
-                messages.success(request, "Updated.")
+                messages.success(request, f"Updated {target_user.username}.")
+                return redirect("/manage/?tab=users")
             except Exception:
                 logger.exception("Failed to update user '%s' via Manage", target_user.username)
                 messages.error(request, "Something went wrong saving those changes - nothing was updated, try again.")
