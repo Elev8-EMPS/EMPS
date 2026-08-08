@@ -2,38 +2,51 @@ name: EPMS Calendar Validation
 
 on:
   push:
-    branches: [main]
+    branches:
+      - "feature/calendar-management-hub"
+      - "main"
   pull_request:
-    branches: [main]
+    branches:
+      - "main"
 
 jobs:
   validation:
+    name: ${{ matrix.pass }}
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        pass: ["1-unit", "2-fresh-migration", "3-upgrade-migration"]
+        pass:
+          - 1-full-tests
+          - 2-fresh-migration
+          - 3-upgrade-migration
+
     steps:
-      - name: Checkout
+      - name: Checkout current revision
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
+          cache: "pip"
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
-      - name: Pass 1 - application tests
-        if: matrix.pass == '1-unit'
+      - name: Pass 1 - Full application tests
+        if: matrix.pass == '1-full-tests'
         run: |
           python manage.py check
           python manage.py makemigrations --check --dry-run
           python manage.py test --verbosity=2
 
-      - name: Pass 2 - clean database migration
+      - name: Pass 2 - Fresh database migration
         if: matrix.pass == '2-fresh-migration'
         run: |
           rm -f db.sqlite3
@@ -41,19 +54,37 @@ jobs:
           python manage.py check
           python manage.py test calendar_app --verbosity=2
 
-      - name: Pass 3 - upgrade migration from previous commit
+      - name: Pass 3 - Upgrade migration
         if: matrix.pass == '3-upgrade-migration'
+        shell: bash
         run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
+          set -e
+
+          echo "Preparing previous project revision..."
+
+          rm -rf /tmp/epms-previous
           mkdir -p /tmp/epms-previous
-git archive HEAD^ | tar -x -C /tmp/epms-previous
+
+          git archive HEAD^ | tar -x -C /tmp/epms-previous
+
+          echo "Installing dependencies for previous revision..."
+
           cd /tmp/epms-previous
-          cp -R "$GITHUB_WORKSPACE/.git" .git
           python -m pip install -r requirements.txt
+
+          echo "Creating database from previous revision..."
+
           python manage.py migrate --noinput
+
+          echo "Copying previous database..."
+
           cp db.sqlite3 "$GITHUB_WORKSPACE/db.sqlite3"
+
+          echo "Testing upgrade to current revision..."
+
           cd "$GITHUB_WORKSPACE"
+
+          python manage.py migrate --plan
           python manage.py migrate --noinput
           python manage.py check
           python manage.py test calendar_app --verbosity=2
