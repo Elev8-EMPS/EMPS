@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Approvals - EPMS{% endblock %}
+{% block header %}Calendar &rsaquo; Approvals{% endblock %}
+{% block content %}
+
+<div class="tabs">
+  <a href="/calendar/">Calendar</a>
+  <a href="/calendar/my-requests/">My requests</a>
+  <a href="/calendar/approvals/" class="active">Approvals</a>
+</div>
+
+<div class="section">
+  <h2>Pending <span class="count">({{ pending|length }})</span></h2>
+  {% if pending %}
+  <table class="list">
+    <tr><th>Person</th><th>Type</th><th>Dates</th><th>Reason</th><th>Decision</th></tr>
+    {% for r in pending %}
+    <tr>
+      <td>{{ r.user.get_full_name|default:r.user.username }}</td>
+      <td>{{ r.get_leave_type_display }}{% if r.leave_type == 'wfh_standing' %} - {{ r.get_standing_action_display }} {{ r.get_standing_weekday_display }}{% endif %}</td>
+      <td>{{ r.start_date }}{% if r.end_date != r.start_date %} to {{ r.end_date }}{% endif %}</td>
+      <td>{{ r.reason|default:"—" }}</td>
+      <td>
+        <form method="post" action="/calendar/approvals/{{ r.pk }}/decide/" style="display:flex; gap:6px; align-items:center;">
+          {% csrf_token %}
+          <input type="hidden" name="decision" value="approved">
+          <button type="submit" class="btn" style="background:var(--ok);" onclick="this.form.decision.value='approved';">Approve</button>
+        </form>
+        <details style="margin-top:6px;">
+          <summary style="cursor:pointer; font-size:12.5px; color:var(--danger);">Decline</summary>
+          <form method="post" action="/calendar/approvals/{{ r.pk }}/decide/" style="margin-top:6px;">
+            {% csrf_token %}
+            <input type="hidden" name="decision" value="declined">
+            <textarea name="decline_reason" placeholder="Reason (required)" rows="2" style="width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:12.5px; margin-bottom:6px;"></textarea>
+            <button type="submit" class="btn" style="background:var(--danger);">Confirm decline</button>
+          </form>
+        </details>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">Nothing pending right now.</div>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h2>Recently decided by you</h2>
+  {% if decided %}
+  <ul class="rows">
+    {% for r in decided %}
+    <li>{{ r.user.get_full_name|default:r.user.username }} - {{ r.get_leave_type_display }} <span class="tag {% if r.status == 'approved' %}ok{% else %}danger{% endif %}">{{ r.get_status_display }}</span>{% if r.decline_reason %} <span style="color:var(--muted); font-size:12.5px;">"{{ r.decline_reason }}"</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty">Nothing decided yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

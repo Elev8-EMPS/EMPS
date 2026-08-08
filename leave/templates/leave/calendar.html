@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Calendar - EPMS{% endblock %}
+{% block header %}Calendar{% endblock %}
+{% block content %}
+
+{% if no_tenant %}
+<div class="section"><div class="empty">No tenant set up yet.</div></div>
+{% else %}
+
+<div class="tabs">
+  <a href="/calendar/" class="active">Calendar</a>
+  <a href="/calendar/my-requests/">My requests</a>
+  {% if is_approver %}<a href="/calendar/approvals/">Approvals{% if pending_approvals_count %} <span class="tag warn">{{ pending_approvals_count }}</span>{% endif %}</a>{% endif %}
+  {% if is_admin_scope %}<a href="/calendar/scope/">Calendar scope</a>{% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="section">
+      <h2>Request leave or a WFH change</h2>
+      <div style="padding:18px;">
+        <form method="post" action="/calendar/request/" id="leave-form">
+          {% csrf_token %}
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Type</label>
+            <select name="leave_type" id="leave_type" onchange="toggleFields()" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+              {% for value, label in leave_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;" id="date-fields">
+            <div>
+              <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Start date</label>
+              <input type="date" name="start_date" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div>
+              <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">End date</label>
+              <input type="date" name="end_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+          </div>
+
+          <div id="swap-field" style="display:none; margin-bottom:14px;">
+            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Day you're moving out of (optional)</label>
+            <input type="date" name="swap_original_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          </div>
+
+          <div id="standing-fields" style="display:none; margin-bottom:14px;">
+            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Weekday</label>
+            <select name="standing_weekday" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;">
+              {% for value, label in weekday_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Action</label>
+            <select name="standing_action" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+              <option value="add">Add as a standing WFH day</option>
+              <option value="remove">Remove as a standing WFH day</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Reason / purpose <span id="reason-required" style="display:none; color:var(--danger);">*</span></label>
+            <textarea name="reason" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
+          </div>
+
+          <button type="submit" class="btn">Send request</button>
+        </form>
+      </div>
+    </div>
+
+    {% if my_wfh_days %}
+    <div class="section">
+      <h2>My standing WFH days</h2>
+      <div style="padding:14px 18px; font-size:14px;">
+        {% for w in my_wfh_days %}<span class="tag ok">{{ w.get_weekday_display }}</span> {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa;">
+        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn" style="background:var(--muted);">&laquo;</a>
+        <h2 style="border:none; padding:0; background:none;">{{ month_name }}</h2>
+        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn" style="background:var(--muted);">&raquo;</a>
+      </div>
+      <div style="padding:14px;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <tr>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Mon</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Tue</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Wed</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Thu</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Fri</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Sat</th>
+            <th style="font-size:11px; color:var(--muted); padding:4px;">Sun</th>
+          </tr>
+          {% for week in weeks %}
+          <tr>
+            {% for day in week %}
+            <td style="vertical-align:top; padding:4px; border:1px solid var(--border); height:74px; {% if day.is_today %}background:#eff6ff;{% endif %}">
+              {% if day %}
+              <div style="font-size:12px; color:var(--muted); margin-bottom:3px;">{{ day.date.day }}</div>
+              {% for lr in day.leave %}
+              <div style="font-size:10.5px; margin-bottom:2px;">
+                <span class="tag {% if lr.status == 'pending' %}warn{% else %}ok{% endif %}" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ lr.user.first_name|default:lr.user.username }} - {{ lr.get_leave_type_display }}</span>
+              </div>
+              {% endfor %}
+              {% for w in day.wfh %}
+              <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag" style="display:block;">{{ w.user.first_name|default:w.user.username }} WFH</span></div>
+              {% endfor %}
+              {% for m in day.deadlines %}
+              <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag danger" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.project.project_number }} due</span></div>
+              {% endfor %}
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleFields() {
+  var type = document.getElementById('leave_type').value;
+  document.getElementById('swap-field').style.display = (type === 'wfh_swap') ? 'block' : 'none';
+  document.getElementById('standing-fields').style.display = (type === 'wfh_standing') ? 'block' : 'none';
+  document.getElementById('date-fields').style.display = (type === 'wfh_standing') ? 'none' : 'grid';
+  document.getElementById('reason-required').style.display = (type === 'other') ? 'inline' : 'none';
+}
+toggleFields();
+</script>
+
+{% endif %}
+{% endblock %}

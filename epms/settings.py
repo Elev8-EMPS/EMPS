@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "crm",
     "delivery",
     "finance",
+    "leave",
     "dashboard",
     "security",
     "django_otp",

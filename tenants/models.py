@@ -68,25 +68,17 @@ class UserProfile(models.Model):
     user = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="profile")
     tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="users")
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, blank=True)
+    manager = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="direct_reports",
+        help_text="This person's line manager - who approves their leave and WFH requests, "
+                   "in addition to any Director or Company Administrator.",
+    )
     can_manage_proposals = models.BooleanField(
         default=False,
         help_text="Can see and work with Fee Proposals - fee amounts, follow-ups, and (in future) "
                    "proposal letters/templates. Company Administrators and Directors always have "
                    "this regardless of this checkbox; tick it for anyone else who should be able "
                    "to create or view proposals.",
-    )
-    date_of_birth = models.DateField(null=True, blank=True)
-    date_started = models.DateField(
-        null=True, blank=True, help_text="Date they started with the company."
-    )
-    phone = models.CharField(max_length=50, blank=True)
-    direct_manager = models.ForeignKey(
-        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="direct_reports",
-        help_text="Leave requests from this person are routed to their direct manager for approval.",
-    )
-    modalities = models.ManyToManyField(
-        "Modality", blank=True, related_name="user_profiles",
-        help_text="Disciplines this person personally works in - independent of their team's modalities.",
     )
 
     def __str__(self):

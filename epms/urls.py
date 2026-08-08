@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include('crm.urls')),
     path('', include('delivery.urls')),
     path('', include('finance.urls')),
+    path('', include('leave.urls')),
     path('', include('security.urls')),
     path('', include('tenants.urls')),
     path('admin/', admin.site.urls),

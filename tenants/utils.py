@@ -49,6 +49,17 @@ def can_view_fee_amounts(user):
     return can_view_financials(user) or can_view_proposals(user)
 
 
+def can_approve_leave(actor, target_user):
+    """Who's allowed to approve/decline a leave or WFH request for
+    `target_user`: their Line Manager specifically, or anyone with
+    the Director/Company Admin role - matching the rule that only
+    managers, directors, and company admins can act on leave."""
+    if get_user_role(actor) in CONFIDENTIAL_ROLES:  # company_admin, director
+        return True
+    profile = getattr(target_user, "profile", None)
+    return bool(profile and profile.manager_id == actor.id)
+
+
 def get_dashboard_visibility(tenant):
     """The tenant-level setting controlling what people WITHOUT
     proposal access see on their Command Centre. Defaults to the

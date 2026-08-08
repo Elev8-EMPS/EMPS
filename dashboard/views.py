@@ -10,6 +10,7 @@ from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard
 from crm.models import Proposal, Enquiry
 from delivery.models import Milestone, Task, Project
 from finance.models import Invoice
+from leave.models import LeaveRequest, WFHDay
 
 
 @login_required
@@ -69,6 +70,16 @@ def command_centre(request):
     open_proposal_statuses = ["draft", "internal_review", "director_review", "approved", "issued", "follow_up_due", "revised"]
     unpaid_invoice_statuses = ["awaiting_approval", "approved", "issued", "part_paid", "overdue", "disputed"]
 
+    # Who's out or working from home today, across the whole tenant -
+    # this is deliberately not team-scoped, since knowing who's around
+    # today is useful company-wide and doesn't expose anything private
+    # (the free-text reason and decline reason are never shown here).
+    out_today = LeaveRequest.objects.filter(
+        tenant=tenant, status="approved", start_date__lte=today, end_date__gte=today,
+        leave_type__in=["annual", "sick", "other"],
+    ).select_related("user")
+    wfh_today = WFHDay.objects.filter(tenant=tenant, weekday=today.weekday()).select_related("user")
+
     # Fee Proposals are opt-in visible (see tenants.utils.can_view_proposals).
     # People without access see nothing proposal-related by default, or -
     # if this tenant has turned on 'responsible_for' mode - a filtered view
@@ -103,7 +114,6 @@ def command_centre(request):
         "active_nav": "home",
         "tenant": tenant,
         "user_tenant": tenant,
-        # KPI cards
         "active_projects_count": milestones.values("project").distinct().filter(
             project__status="active"
         ).count(),
@@ -137,6 +147,10 @@ def command_centre(request):
         "proposal_followups_due": proposal_followups_due if full_proposal_access else None,
         "invoice_followups_due": invoice_followups_due,
         "my_team_projects": my_team_projects,
+        # Who's around today
+        "out_today": out_today,
+        "wfh_today": wfh_today,
+        "today_count": out_today.count() + wfh_today.count(),
         # Fee Proposal visibility - "full", "responsible", or "hidden"
         "proposals_visibility": proposals_visibility,
         "my_responsible_enquiries": my_responsible_enquiries,

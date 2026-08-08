@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My Requests - EPMS{% endblock %}
+{% block header %}Calendar &rsaquo; My requests{% endblock %}
+{% block content %}
+
+<div class="tabs">
+  <a href="/calendar/">Calendar</a>
+  <a href="/calendar/my-requests/" class="active">My requests</a>
+</div>
+
+{% if requests %}
+<table class="list">
+  <tr><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th><th>Decline reason</th></tr>
+  {% for r in requests %}
+  <tr>
+    <td>{{ r.get_leave_type_display }}</td>
+    <td>{{ r.start_date }}{% if r.end_date != r.start_date %} to {{ r.end_date }}{% endif %}</td>
+    <td>{{ r.reason|default:"—" }}</td>
+    <td>
+      <span class="tag {% if r.status == 'approved' %}ok{% elif r.status == 'declined' %}danger{% elif r.status == 'pending' %}warn{% endif %}">{{ r.get_status_display }}</span>
+    </td>
+    <td>{{ r.decline_reason|default:"—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="section"><div class="empty">No requests yet - submit one from the Calendar tab.</div></div>
+{% endif %}
+
+{% endblock %}

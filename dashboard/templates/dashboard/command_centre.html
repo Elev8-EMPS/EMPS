@@ -37,6 +37,17 @@
   </div>
   {% endif %}
 
+  {% if out_today or wfh_today %}
+  <div class="section">
+    <h2>Today <span class="count">({{ today_count }})</span></h2>
+    <div style="padding:14px 18px;">
+      {% for lr in out_today %}<span class="tag danger" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ lr.user.get_full_name|default:lr.user.username }} - {{ lr.get_leave_type_display }}</span>{% endfor %}
+      {% for w in wfh_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ w.user.get_full_name|default:w.user.username }} - WFH</span>{% endfor %}
+      {% if not out_today and not wfh_today %}<span style="color:var(--muted); font-size:13.5px;">Everyone's in today.</span>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   {% if proposals_visibility == 'responsible' %}
   <div class="section">
     <h2>Enquiries you're responsible for <span class="count">({{ my_responsible_enquiries|length }})</span></h2>
