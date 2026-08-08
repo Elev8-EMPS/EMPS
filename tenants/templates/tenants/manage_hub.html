@@ -13,13 +13,14 @@
 {% if tab == 'users' %}
 <div style="text-align:right; margin-bottom:14px;"><a href="/manage/users/new/" class="btn" style="background:var(--ok);">+ New user</a></div>
 <table class="list">
-  <tr><th>Username</th><th>Name</th><th>Role</th><th>Teams</th><th>Fee Proposals</th><th>Status</th></tr>
+  <tr><th>Username</th><th>Name</th><th>Role</th><th>Teams</th><th>Manager</th><th>Fee Proposals</th><th>Status</th></tr>
   {% for u in users %}
   <tr>
     <td><a href="/manage/users/{{ u.pk }}/edit/">{{ u.username }}</a></td>
     <td>{{ u.first_name }} {{ u.last_name }}</td>
     <td>{{ u.profile.get_role_display|default:"—" }}</td>
     <td>{% for t in u.teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+    <td>{{ u.profile.direct_manager.get_full_name|default:u.profile.direct_manager.username|default:"—" }}</td>
     <td>{% if u.profile.role == 'company_admin' or u.profile.role == 'director' %}<span class="tag ok">Always</span>{% elif u.profile.can_manage_proposals %}<span class="tag ok">Yes</span>{% else %}—{% endif %}</td>
     <td><span class="tag {% if u.is_active %}ok{% else %}danger{% endif %}">{{ u.is_active|yesno:"Active,Retired" }}</span></td>
   </tr>
