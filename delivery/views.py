@@ -5,7 +5,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from tenants.models import Team, Modality, ChecklistItemTemplate
-from tenants.utils import get_user_tenant
+from tenants.utils import get_user_tenant, get_user_role
+from calendar_app.services import visible_projects, visible_tasks
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
@@ -172,7 +173,7 @@ def _find_or_create_contact_from_external(tenant, name, company, email, phone):
 @login_required
 def project_list(request):
     tenant = get_user_tenant(request)
-    projects = Project.objects.filter(tenant=tenant) if tenant else Project.objects.none()
+    projects = visible_projects(request.user, tenant) if tenant else Project.objects.none()
 
     q = request.GET.get("q", "").strip()
     if q:
@@ -201,6 +202,10 @@ def project_detail(request, pk):
         Project.objects.select_related("client_organisation", "project_manager", "director"),
         pk=pk, tenant=tenant,
     )
+
+    if not visible_projects(request.user, tenant).filter(pk=project.pk).exists():
+        from django.http import Http404
+        raise Http404()
 
     if request.method == "POST" and request.POST.get("action") == "add_modality":
         modality_id = request.POST.get("modality")
@@ -343,7 +348,7 @@ def checklist_toggle(request, pk):
 @login_required
 def milestone_list(request):
     tenant = get_user_tenant(request)
-    milestones = Milestone.objects.filter(tenant=tenant) if tenant else Milestone.objects.none()
+    milestones = Milestone.objects.filter(tenant=tenant, project__in=visible_projects(request.user, tenant)) if tenant else Milestone.objects.none()
 
     status = request.GET.get("status", "").strip()
     if status:
@@ -373,6 +378,9 @@ def milestone_detail(request, pk):
     milestone = get_object_or_404(
         Milestone.objects.select_related("project", "responsible_user"), pk=pk, tenant=tenant
     )
+    if not visible_projects(request.user, tenant).filter(pk=milestone.project_id).exists():
+        from django.http import Http404
+        raise Http404()
     return render(request, "delivery/milestone_detail.html", {
         "active_nav": "milestones",
         "user_tenant": tenant,
@@ -384,7 +392,7 @@ def milestone_detail(request, pk):
 @login_required
 def task_list(request):
     tenant = get_user_tenant(request)
-    tasks = Task.objects.filter(tenant=tenant) if tenant else Task.objects.none()
+    tasks = visible_tasks(request.user, tenant) if tenant else Task.objects.none()
 
     status = request.GET.get("status", "").strip()
     if status:
@@ -399,7 +407,6 @@ def task_list(request):
         tasks = tasks.filter(
             Q(owner=request.user) | Q(assigned_team__members=request.user)
         ).distinct()
-    # scope == "all" -> no extra filter, tenant staff can see everything
 
     owner_id = request.GET.get("owner", "").strip()
     if owner_id:
@@ -483,6 +490,10 @@ def task_detail(request, pk):
         pk=pk, tenant=tenant,
     )
 
+    if not visible_tasks(request.user, tenant).filter(pk=task.pk).exists():
+        from django.http import Http404
+        raise Http404()
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "comment":
@@ -511,6 +522,8 @@ def task_detail(request, pk):
 def document_list(request):
     tenant = get_user_tenant(request)
     documents = Document.objects.filter(tenant=tenant) if tenant else Document.objects.none()
+    if tenant and not request.user.is_superuser:
+        documents = documents.filter(Q(related_project__in=visible_projects(request.user, tenant)) | Q(uploaded_by=request.user)).distinct()
 
     category = request.GET.get("category", "").strip()
     if category:

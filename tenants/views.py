@@ -206,7 +206,7 @@ def manage_team_create(request):
         if name:
             try:
                 with transaction.atomic():
-                    team = Team.objects.create(tenant=tenant, name=name)
+                    team = Team.objects.create(tenant=tenant, name=name, manager_id=request.POST.get("manager") or None)
                     team.members.set(request.POST.getlist("members"))
                     team.modalities.set(request.POST.getlist("modalities"))
                 messages.success(request, f"Created team '{name}'.")
@@ -220,6 +220,7 @@ def manage_team_create(request):
         "user_tenant": tenant,
         "users": User.objects.filter(profile__tenant=tenant).order_by("username"),
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "potential_managers": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
     })
 
 
@@ -237,6 +238,7 @@ def manage_team_edit(request, pk):
             try:
                 with transaction.atomic():
                     team.name = request.POST.get("name", team.name).strip()
+                    team.manager_id = request.POST.get("manager") or None
                     team.members.set(request.POST.getlist("members"))
                     team.modalities.set(request.POST.getlist("modalities"))
                     team.save()
@@ -258,6 +260,7 @@ def manage_team_edit(request, pk):
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
         "member_ids": set(team.members.values_list("id", flat=True)),
         "modality_ids": set(team.modalities.values_list("id", flat=True)),
+        "potential_managers": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
     })
 
 

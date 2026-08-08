@@ -6,7 +6,8 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from tenants.models import Tenant
-from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard_visibility
+from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard_visibility, get_user_role
+from calendar_app.services import visible_leave_requests, wfh_users_on_date
 from crm.models import Proposal, Enquiry
 from delivery.models import Milestone, Task, Project
 from finance.models import Invoice
@@ -38,7 +39,10 @@ def command_centre(request):
     milestones = Milestone.objects.filter(tenant=tenant)
     proposals = Proposal.objects.filter(tenant=tenant)
     invoices = Invoice.objects.filter(tenant=tenant)
-    tasks = Task.objects.filter(tenant=tenant)
+    tasks = Task.objects.filter(tenant=tenant).filter(Q(owner=request.user) | Q(assigned_team__members=request.user)).distinct()
+    from calendar_app.services import visible_projects
+    if get_user_role(request.user) not in {"company_admin", "director"} and not request.user.is_superuser:
+        milestones = milestones.filter(project__in=visible_projects(request.user, tenant))
 
     from crm.models import ProposalFollowUp
     from finance.models import InvoiceFollowUp
@@ -98,6 +102,8 @@ def command_centre(request):
             Q(project_manager=request.user) | Q(director=request.user)
         ).distinct().select_related("client_organisation").order_by("-archive_date", "-completion_date")
 
+    people_on_leave_today = visible_leave_requests(request.user, tenant, today, today).filter(status="approved")
+    people_wfh_today = wfh_users_on_date(request.user, tenant, today)
     context = {
         "no_tenant": False,
         "active_nav": "home",
@@ -137,6 +143,8 @@ def command_centre(request):
         "proposal_followups_due": proposal_followups_due if full_proposal_access else None,
         "invoice_followups_due": invoice_followups_due,
         "my_team_projects": my_team_projects,
+        "people_on_leave_today": people_on_leave_today,
+        "people_wfh_today": people_wfh_today,
         # Fee Proposal visibility - "full", "responsible", or "hidden"
         "proposals_visibility": proposals_visibility,
         "my_responsible_enquiries": my_responsible_enquiries,

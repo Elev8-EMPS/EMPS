@@ -24,6 +24,12 @@ class Tenant(models.Model):
         max_length=20, choices=DASHBOARD_VISIBILITY_CHOICES, default="restricted",
         help_text="Controls what people WITHOUT Fee Proposal access see on their Command Centre.",
     )
+    leave_approval_reminder_days = models.PositiveIntegerField(
+        default=2, help_text="Business days before a pending leave/WFH approval reminder is raised.",
+    )
+    leave_approval_escalation_days = models.PositiveIntegerField(
+        default=3, help_text="Business days before a pending leave/WFH approval is escalated to Company Admin.",
+    )
 
     def __str__(self):
         return self.name
@@ -103,6 +109,10 @@ class Team(models.Model):
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="teams")
     name = models.CharField(max_length=100)
+    manager = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="managed_teams",
+        help_text="The manager responsible for this team in the Calendar and Management Hub.",
+    )
     members = models.ManyToManyField("auth.User", related_name="teams", blank=True)
     modalities = models.ManyToManyField(
         "Modality", related_name="teams", blank=True,

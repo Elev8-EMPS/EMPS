@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}WFH Change — EPMS{% endblock %}
+{% block header %}Request WFH Change{% endblock %}
+{% block content %}
+<div class="form-card"><h2>WFH change request</h2><p class="muted">Your normal recurring WFH schedule is not changed by this request. An approved swap is a one-off exception.</p>
+<form method="post">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div class="form-row"><label>{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>{% endfor %}<div class="form-actions"><a class="btn secondary" href="{% url 'calendar_home' %}">Cancel</a><button class="btn" type="submit">Submit request</button></div></form></div>
+<style>.form-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px;max-width:700px}.muted{color:var(--muted);font-size:13px}.form-row{margin:14px 0}.form-row label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font:inherit}.form-actions{display:flex;gap:8px;justify-content:flex-end}.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--border)}.error{color:var(--danger);font-size:12px}</style>
+{% endblock %}

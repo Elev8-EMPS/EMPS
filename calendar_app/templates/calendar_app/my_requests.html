@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}My Requests — EPMS{% endblock %}
+{% block header %}My Calendar Requests{% endblock %}
+{% block content %}
+<div class="section"><h2>Leave</h2><table class="list"><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Decline reason</th></tr>{% for item in leave_requests %}<tr><td>{{ item.leave_type.name }}</td><td>{{ item.start_date }} → {{ item.end_date }}</td><td>{{ item.working_days }}</td><td>{{ item.get_status_display }}</td><td>{% if item.status == 'declined' %}{{ item.decline_reason }}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="5">No leave requests.</td></tr>{% endfor %}</table></div>
+<div class="section"><h2>WFH changes</h2><table class="list"><tr><th>Type</th><th>Original</th><th>Requested</th><th>Status</th><th>Decline reason</th></tr>{% for item in wfh_requests %}<tr><td>{{ item.get_change_type_display }}</td><td>{{ item.original_date|default:"—" }}</td><td>{{ item.requested_date }}</td><td>{{ item.get_status_display }}</td><td>{% if item.status == 'declined' %}{{ item.decline_reason }}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="5">No WFH requests.</td></tr>{% endfor %}</table></div>
+{% endblock %}

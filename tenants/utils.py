@@ -79,6 +79,11 @@ def get_open_todo_count(user):
         return 0
     from delivery.models import Task
     open_statuses = ["not_started", "in_progress", "waiting"]
-    return Task.objects.filter(status__in=open_statuses).filter(
+    profile = getattr(user, "profile", None)
+    tenant = profile.tenant if profile else None
+    qs = Task.objects.filter(status__in=open_statuses)
+    if tenant:
+        qs = qs.filter(tenant=tenant)
+    return qs.filter(
         models.Q(owner=user) | models.Q(assigned_team__members=user)
     ).distinct().count()

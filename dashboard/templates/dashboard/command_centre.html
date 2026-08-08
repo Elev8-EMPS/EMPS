@@ -26,6 +26,17 @@
     <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
   </div>
 
+  <div class="grid-2">
+    <div class="section">
+      <h2>People out today <span class="count">({{ people_on_leave_today|length }})</span></h2>
+      {% if people_on_leave_today %}<ul class="rows">{% for item in people_on_leave_today %}<li><span>{{ item.requester.get_full_name|default:item.requester.username }}</span><span class="tag warn">{{ item.leave_type.name }}</span></li>{% endfor %}</ul>{% else %}<div class="empty">No one in your scope is on approved leave today.</div>{% endif %}
+    </div>
+    <div class="section">
+      <h2>WFH today <span class="count">({{ people_wfh_today|length }})</span></h2>
+      {% if people_wfh_today %}<ul class="rows">{% for item in people_wfh_today %}<li><span>{{ item.get_full_name|default:item.username }}</span><span class="tag ok">WFH</span></li>{% endfor %}</ul>{% else %}<div class="empty">No one in your scope is scheduled WFH today.</div>{% endif %}
+    </div>
+  </div>
+
   {% if my_team_projects %}
   <div class="section">
     <h2>My team's active projects <span class="count">({{ my_team_projects|length }})</span></h2>

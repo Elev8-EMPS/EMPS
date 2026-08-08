@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Calendar Configuration — EPMS{% endblock %}
+{% block header %}Calendar Configuration{% endblock %}
+{% block content %}
+<div class="section"><h2>Approval timing</h2><form method="post" class="config-form">{% csrf_token %}<input type="hidden" name="action" value="settings">{% for field in settings_form %}<label>{{ field.label }}{{ field }}</label>{% endfor %}<button class="btn" type="submit">Save timing</button></form></div>
+<div class="section"><h2>Calendar event colours</h2>{% for obj, form in event_types %}<form method="post" class="config-row">{% csrf_token %}<input type="hidden" name="action" value="event"><input type="hidden" name="pk" value="{{ obj.pk }}"><strong>{{ obj.name }}</strong>{% for field in form %}{{ field }}{% endfor %}<button class="btn" type="submit">Save</button></form>{% endfor %}</div>
+<div class="section"><h2>Leave types</h2>{% for obj, form in leave_types %}<form method="post" class="config-row">{% csrf_token %}<input type="hidden" name="action" value="leave"><input type="hidden" name="pk" value="{{ obj.pk }}"><strong>{{ obj.name }}</strong>{% for field in form %}{{ field }}{% endfor %}<button class="btn" type="submit">Save</button></form>{% endfor %}</div>
+<style>.config-form{padding:18px;display:grid;gap:10px;max-width:650px}.config-form label{font-size:13px;font-weight:600}.config-form input,.config-row input,.config-row select{padding:7px;border:1px solid var(--border);border-radius:6px}.config-row{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap}.config-row strong{min-width:150px}.config-row button{padding:6px 10px}</style>
+{% endblock %}

@@ -11,6 +11,13 @@
         <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Team name</label>
         <input type="text" name="name" value="{{ team.name }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
       </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Team manager</label>
+        <select name="manager" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— No manager —</option>
+          {% for u in potential_managers %}<option value="{{ u.pk }}" {% if team.manager_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+      </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Members</label>

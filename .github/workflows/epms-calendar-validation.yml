@@ -1,0 +1,59 @@
+name: EPMS Calendar Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pass: ["1-unit", "2-fresh-migration", "3-upgrade-migration"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Pass 1 - application tests
+        if: matrix.pass == '1-unit'
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          python manage.py test --verbosity=2
+
+      - name: Pass 2 - clean database migration
+        if: matrix.pass == '2-fresh-migration'
+        run: |
+          rm -f db.sqlite3
+          python manage.py migrate --noinput
+          python manage.py check
+          python manage.py test calendar_app --verbosity=2
+
+      - name: Pass 3 - upgrade migration from previous commit
+        if: matrix.pass == '3-upgrade-migration'
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          mkdir -p /tmp/epms-previous
+git archive HEAD^ | tar -x -C /tmp/epms-previous
+          cd /tmp/epms-previous
+          cp -R "$GITHUB_WORKSPACE/.git" .git
+          python -m pip install -r requirements.txt
+          python manage.py migrate --noinput
+          cp db.sqlite3 "$GITHUB_WORKSPACE/db.sqlite3"
+          cd "$GITHUB_WORKSPACE"
+          python manage.py migrate --noinput
+          python manage.py check
+          python manage.py test calendar_app --verbosity=2

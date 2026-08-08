@@ -73,14 +73,18 @@
     <a href="/proposals/" class="{% if active_nav == 'proposals' %}active{% endif %}">Fee Proposals</a>
     {% endif %}
     <a href="/projects/" class="{% if active_nav == 'projects' %}active{% endif %}">Projects</a>
+    <a href="/calendar/" class="{% if active_nav == 'calendar' %}active{% endif %}">Calendar</a>
     <a href="/milestones/" class="{% if active_nav == 'milestones' %}active{% endif %}">Milestones</a>
     <a href="/tasks/" class="{% if active_nav == 'tasks' %}active{% endif %}">Tasks{% if my_open_todos_count %} <span style="background:var(--danger, #dc2626); color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; margin-left:4px;">{{ my_open_todos_count }}</span>{% endif %}</a>
     <a href="/documents/" class="{% if active_nav == 'documents' %}active{% endif %}">Documents</a>
     {% if can_view_financials %}
     <a href="/invoices/" class="{% if active_nav == 'finance' %}active{% endif %}">Finance</a>
     {% endif %}
+    {% if can_access_management %}
+    <a href="/management/" class="{% if active_nav == 'management' %}active{% endif %}">Management Hub</a>
+    {% endif %}
     {% if can_manage_org %}
-    <a href="/manage/" class="{% if active_nav == 'manage' %}active{% endif %}">Manage</a>
+    <a href="/manage/" class="{% if active_nav == 'manage' %}active{% endif %}">Company Manage</a>
     {% endif %}
     <a href="/admin/">Administration</a>
     {% if request.user.is_authenticated %}

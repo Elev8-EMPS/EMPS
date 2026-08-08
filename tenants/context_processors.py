@@ -1,4 +1,4 @@
-from .utils import get_open_todo_count, can_view_financials, can_view_confidential, can_view_proposals, can_view_fee_amounts, get_user_tenant, get_dashboard_visibility
+from .utils import get_open_todo_count, can_view_financials, can_view_confidential, can_view_proposals, can_view_fee_amounts, get_user_tenant, get_dashboard_visibility, get_user_role
 
 
 def todo_badge(request):
@@ -17,6 +17,7 @@ def todo_badge(request):
             # Nav link stays visible in 'responsible_for' mode too, since
             # those users can still reach a filtered proposal list.
             "show_proposals_nav": proposals_ok or get_dashboard_visibility(tenant) == "responsible_for",
+            "can_access_management": get_user_role(request.user) in {"company_admin", "director", "project_manager"} or request.user.is_superuser,
         }
     return {
         "my_open_todos_count": 0,
@@ -25,4 +26,5 @@ def todo_badge(request):
         "can_view_proposals": False,
         "can_view_fee_amounts": False,
         "show_proposals_nav": False,
+        "can_access_management": False,
     }

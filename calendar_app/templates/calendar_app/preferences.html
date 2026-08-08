@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Calendar Preferences — EPMS{% endblock %}
+{% block header %}Calendar Preferences{% endblock %}
+{% block content %}
+<div class="form-card"><h2>What should appear?</h2><form method="post">{% csrf_token %}{% for field in form %}<label class="check">{{ field }} {{ field.label }}</label>{% endfor %}<div class="form-actions"><a class="btn secondary" href="{% url 'calendar_home' %}">Cancel</a><button class="btn" type="submit">Save preferences</button></div></form></div>
+<style>.form-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px;max-width:700px}.check{display:block;padding:10px;border-bottom:1px solid var(--border);font-size:13px}.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--border)}</style>
+{% endblock %}

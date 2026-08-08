@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "finance",
     "dashboard",
     "security",
+    "calendar_app",
     "django_otp",
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",

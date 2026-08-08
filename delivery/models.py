@@ -80,6 +80,10 @@ class Milestone(TenantModel):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="milestones")
     milestone_type = models.CharField(max_length=100)
+    modalities = models.ManyToManyField(
+        "tenants.Modality", blank=True, related_name="milestones",
+        help_text="Disciplines contributing to this deadline. If blank, the project's modalities are used for calendar scope display.",
+    )
     deadline = models.DateField()
     responsible_user = models.ForeignKey(
         "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="responsible_milestones"
