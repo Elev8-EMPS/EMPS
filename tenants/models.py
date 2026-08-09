@@ -73,6 +73,15 @@ class UserProfile(models.Model):
         help_text="This person's line manager - who approves their leave and WFH requests, "
                    "in addition to any Director or Company Administrator.",
     )
+    date_of_birth = models.DateField(null=True, blank=True)
+    date_started = models.DateField(
+        null=True, blank=True, help_text="Date they started with the company."
+    )
+    phone = models.CharField(max_length=50, blank=True)
+    modalities = models.ManyToManyField(
+        "Modality", blank=True, related_name="user_profiles",
+        help_text="Disciplines this person personally works in - independent of their team's modalities.",
+    )
     can_manage_proposals = models.BooleanField(
         default=False,
         help_text="Can see and work with Fee Proposals - fee amounts, follow-ups, and (in future) "

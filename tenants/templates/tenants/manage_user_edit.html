@@ -24,6 +24,20 @@
       <div style="margin-bottom:16px;">
         <input type="email" name="email" value="{{ target_user.email }}" placeholder="Email" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
       </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Phone number</label>
+          <input type="text" name="phone" value="{{ profile.phone }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Date of birth</label>
+          <input type="date" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Date started with company</label>
+        <input type="date" name="date_started" value="{{ profile.date_started|date:'Y-m-d' }}" style="width:100%; max-width:340px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Role</label>
@@ -39,6 +53,15 @@
             <label style="display:block; font-size:14px; margin-bottom:4px;"><input type="checkbox" name="teams" value="{{ t.pk }}" {% if t.pk in my_team_ids %}checked{% endif %}> {{ t.name }}</label>
             {% empty %}<span style="font-size:13px; color:var(--muted);">No teams yet.</span>{% endfor %}
           </div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Modalities</label>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 6px;">The disciplines this person personally works in — separate from what their team covers.</p>
+        <div style="padding:4px 0; display:flex; flex-wrap:wrap; gap:14px;">
+          {% for m in modalities %}
+          <label style="display:flex; align-items:center; gap:6px; font-size:14px;"><input type="checkbox" name="modalities" value="{{ m.pk }}" {% if m.pk in my_modality_ids %}checked{% endif %}> {{ m.name }}</label>
+          {% empty %}<span style="font-size:13px; color:var(--muted);">No modalities set up yet.</span>{% endfor %}
         </div>
       </div>
       <div style="margin-bottom:20px;">

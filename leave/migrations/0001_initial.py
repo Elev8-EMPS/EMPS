@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('tenants', '0010_userprofile_manager'),
+        ('tenants', '0011_userprofile_manager_and_details'),
         ('delivery', '0008_projectscopeaddition'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,6 +11,17 @@ from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant
 from .utils import get_user_tenant, can_view_confidential
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_date(value):
+    """Parses an HTML date input (YYYY-MM-DD) into a date, or None if blank/invalid."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 
 def _require_admin(request):
@@ -64,21 +76,31 @@ def manage_user_create(request):
         email = request.POST.get("email", "").strip()
         password = request.POST.get("password", "").strip()
         role = request.POST.get("role", "")
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        date_of_birth = _parse_date(request.POST.get("date_of_birth"))
+        date_started = _parse_date(request.POST.get("date_started"))
         manager_id = request.POST.get("manager") or None
 
         if username and password and not User.objects.filter(username=username).exists():
             try:
                 with transaction.atomic():
                     user = User.objects.create_user(
-                        username=username, email=email, password=password, is_staff=True
+                        username=username, email=email, password=password, is_staff=True,
+                        first_name=first_name, last_name=last_name,
                     )
-                    UserProfile.objects.create(
+                    profile = UserProfile.objects.create(
                         user=user, tenant=tenant, role=role, manager_id=manager_id,
                         can_manage_proposals=request.POST.get("can_manage_proposals") == "on",
+                        phone=phone, date_of_birth=date_of_birth, date_started=date_started,
                     )
                     team_ids = request.POST.getlist("teams")
                     if team_ids:
                         user.teams.set(team_ids)
+                    modality_ids = request.POST.getlist("modalities")
+                    if modality_ids:
+                        profile.modalities.set(modality_ids)
                 messages.success(request, f"Created account for {username}.")
                 return redirect("manage_user_edit", pk=user.pk)
             except Exception:
@@ -96,7 +118,8 @@ def manage_user_create(request):
         "user_tenant": tenant,
         "role_choices": UserProfile.ROLE_CHOICES,
         "teams": Team.objects.filter(tenant=tenant).order_by("name"),
-        "all_users": User.objects.filter(profile__tenant=tenant).order_by("username"),
+        "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
     })
 
 
@@ -118,14 +141,23 @@ def manage_user_edit(request, pk):
                 with transaction.atomic():
                     profile.role = request.POST.get("role", "")
                     profile.can_manage_proposals = request.POST.get("can_manage_proposals") == "on"
-                    profile.manager_id = request.POST.get("manager") or None
+                    profile.phone = request.POST.get("phone", "").strip()
+                    profile.date_of_birth = _parse_date(request.POST.get("date_of_birth"))
+                    profile.date_started = _parse_date(request.POST.get("date_started"))
+                    manager_id = request.POST.get("manager") or None
+                    if manager_id == str(target_user.pk):
+                        messages.error(request, "Someone can't be their own manager - manager not changed.")
+                    else:
+                        profile.manager_id = manager_id
                     profile.save()
+                    profile.modalities.set(request.POST.getlist("modalities"))
                     target_user.email = request.POST.get("email", "").strip()
                     target_user.first_name = request.POST.get("first_name", "").strip()
                     target_user.last_name = request.POST.get("last_name", "").strip()
                     target_user.teams.set(request.POST.getlist("teams"))
                     target_user.save()
-                messages.success(request, "Updated.")
+                messages.success(request, f"Updated {target_user.username}.")
+                return redirect("/manage/?tab=users")
             except Exception:
                 logger.exception("Failed to update user '%s' via Manage", target_user.username)
                 messages.error(request, "Something went wrong saving those changes - nothing was updated, try again.")
@@ -153,7 +185,9 @@ def manage_user_edit(request, pk):
         "role_choices": UserProfile.ROLE_CHOICES,
         "teams": Team.objects.filter(tenant=tenant).order_by("name"),
         "my_team_ids": set(target_user.teams.values_list("id", flat=True)),
-        "all_users": User.objects.filter(profile__tenant=tenant).exclude(pk=target_user.pk).order_by("username"),
+        "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "my_modality_ids": set(profile.modalities.values_list("id", flat=True)),
+        "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).exclude(pk=target_user.pk).order_by("username"),
     })
 
 
