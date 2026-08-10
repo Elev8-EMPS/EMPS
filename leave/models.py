@@ -20,8 +20,8 @@ class LeaveRequest(TenantModel):
     LEAVE_TYPE_CHOICES = [
         ("annual", "Annual Leave"),
         ("sick", "Sick Leave"),
-        ("wfh_swap", "WFH Day Swap"),
-        ("wfh_standing", "Standing WFH Day Change"),
+        ("wfh_swap", "Standing WFH Day Swap"),
+        ("wfh_standing", "Request permanent WFH day change"),
         ("other", "Other"),
     ]
     STATUS_CHOICES = [

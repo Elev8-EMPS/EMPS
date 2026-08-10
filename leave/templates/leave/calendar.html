@@ -14,149 +14,141 @@
   {% if is_admin_scope %}<a href="/calendar/scope/">Calendar scope</a>{% endif %}
 </div>
 
-<div class="grid-2">
-  <div>
-    <div class="section">
-      <h2>Request leave or a WFH change</h2>
-      <div style="padding:18px;">
-        <form method="post" action="/calendar/request/" id="leave-form">
-          {% csrf_token %}
-          <div style="margin-bottom:14px;">
-            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Type</label>
-            <select name="leave_type" id="leave_type" onchange="toggleFields()" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-              {% for value, label in leave_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-            </select>
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;" id="date-fields">
-            <div>
-              <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;" id="start-date-label">Start date</label>
-              <input type="date" name="start_date" id="start_date" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-            </div>
-            <div id="end-date-wrap">
-              <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">End date</label>
-              <input type="date" name="end_date" id="end_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-            </div>
-          </div>
-          <p id="date-hint" style="display:none; font-size:12.5px; color:var(--muted); margin:-8px 0 14px;">Tip: click a date directly on the calendar to fill this in - click a second date to select a range.</p>
-
-          <div id="swap-field" style="display:none; margin-bottom:14px;">
-            {% if my_wfh_days %}
-            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Which standing WFH day are you moving?</label>
-            <select name="swap_weekday" id="swap_weekday" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;">
-              {% for w in my_wfh_days %}<option value="{{ w.weekday }}">{{ w.get_weekday_display }}</option>{% endfor %}
-            </select>
-            <p style="font-size:12.5px; color:var(--muted); margin:0;">Pick the new date above - it has to be a weekday in the same week as the day you're moving.</p>
-            {% else %}
-            <p style="font-size:13px; color:var(--muted);">You don't have a standing WFH day set up to swap yet - use "Standing WFH Day Change" below to add one first.</p>
-            {% endif %}
-          </div>
-
-          <div id="standing-fields" style="display:none; margin-bottom:14px;">
-            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Weekday</label>
-            <select name="standing_weekday" id="standing_weekday_select" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;">
-              {% for value, label in weekday_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-            </select>
-            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Action</label>
-            <select name="standing_action" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-              <option value="add">Add as a standing WFH day</option>
-              <option value="remove">Remove as a standing WFH day</option>
-            </select>
-          </div>
-
-          <div style="margin-bottom:16px;">
-            <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Reason / purpose <span id="reason-required" style="display:none; color:var(--danger);">*</span></label>
-            <textarea name="reason" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
-          </div>
-
-          <button type="submit" class="btn">Send request</button>
-        </form>
-      </div>
-    </div>
-
-    {% if my_wfh_days %}
-    <div class="section">
-      <h2>My standing WFH days</h2>
-      <div style="padding:14px 18px; font-size:14px;">
-        {% for w in my_wfh_days %}<span class="tag ok">{{ w.get_weekday_display }}</span> {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+<div class="section">
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa;">
+    <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn" style="background:var(--muted);">&laquo;</a>
+    <h2 style="border:none; padding:0; background:none;">{{ month_name }}</h2>
+    <a href="?year={{ next_year }}&month={{ next_month }}" class="btn" style="background:var(--muted);">&raquo;</a>
   </div>
-
-  <div>
-    <div class="section">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); background:#fafafa;">
-        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn" style="background:var(--muted);">&laquo;</a>
-        <h2 style="border:none; padding:0; background:none;">{{ month_name }}</h2>
-        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn" style="background:var(--muted);">&raquo;</a>
-      </div>
-      <div style="padding:14px;">
-        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-          <tr>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Mon</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Tue</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Wed</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Thu</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Fri</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Sat</th>
-            <th style="font-size:11px; color:var(--muted); padding:4px;">Sun</th>
-          </tr>
-          {% for week in weeks %}
-          <tr>
-            {% for day in week %}
-            <td {% if day %}id="cal-day-{{ day.date|date:'Y-m-d' }}" data-date="{{ day.date|date:'Y-m-d' }}" onclick="pickDate('{{ day.date|date:'Y-m-d' }}')" style="cursor:pointer; vertical-align:top; padding:4px; border:1px solid var(--border); height:74px; {% if day.is_today %}background:#eff6ff;{% endif %}"{% else %}style="vertical-align:top; padding:4px; border:1px solid var(--border); height:74px;"{% endif %}>
-              {% if day %}
-              <div style="font-size:12px; color:var(--muted); margin-bottom:3px;">{{ day.date.day }}</div>
-              {% for lr in day.leave %}
-              <div style="font-size:10.5px; margin-bottom:2px;">
-                <span class="tag {% if lr.status == 'pending' %}warn{% else %}ok{% endif %}" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ lr.display_name }} - {{ lr.get_leave_type_display }}</span>
-              </div>
-              {% endfor %}
-              {% for w in day.wfh %}
-              <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag" style="display:block; background:#dbeafe; border-color:#93c5fd;">{{ w.display_name }} WFH{% if w.leave_type == 'wfh_swap' %} (swap){% endif %}</span></div>
-              {% endfor %}
-              {% for m in day.deadlines %}
-              <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag danger" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.project.project_number }} due</span></div>
-              {% endfor %}
-              {% endif %}
-            </td>
-            {% endfor %}
-          </tr>
+  <div style="padding:14px;">
+    <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+      <tr>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Mon</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Tue</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Wed</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Thu</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Fri</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Sat</th>
+        <th style="font-size:11px; color:var(--muted); padding:4px;">Sun</th>
+      </tr>
+      {% for week in weeks %}
+      <tr>
+        {% for day in week %}
+        <td {% if day %}id="cal-day-{{ day.date|date:'Y-m-d' }}" data-date="{{ day.date|date:'Y-m-d' }}" onclick="pickDate('{{ day.date|date:'Y-m-d' }}')" style="cursor:pointer; vertical-align:top; padding:4px; border:1px solid var(--border); height:74px; {% if day.is_today %}background:#eff6ff;{% endif %}"{% else %}style="vertical-align:top; padding:4px; border:1px solid var(--border); height:74px;"{% endif %}>
+          {% if day %}
+          <div style="font-size:12px; color:var(--muted); margin-bottom:3px;">{{ day.date.day }}</div>
+          {% for lr in day.leave %}
+          <div style="font-size:10.5px; margin-bottom:2px;">
+            <span class="tag {% if lr.status == 'pending' %}warn{% else %}ok{% endif %}" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ lr.display_name }} - {{ lr.get_leave_type_display }}</span>
+          </div>
           {% endfor %}
-        </table>
-      </div>
-    </div>
+          {% for w in day.wfh %}
+          <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag" style="display:block; background:#dbeafe; border-color:#93c5fd;">{{ w.display_name }} WFH{% if w.leave_type == 'wfh_swap' %} (swap){% endif %}</span></div>
+          {% endfor %}
+          {% for m in day.deadlines %}
+          <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag danger" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.project.project_number }} due</span></div>
+          {% endfor %}
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
   </div>
 </div>
+
+<div id="picker-hint" class="section">
+  <div style="padding:16px 18px; font-size:14px; color:var(--muted);">
+    Click a date above to request leave or a WFH change - click a second date to select a range.
+  </div>
+</div>
+
+<div id="request-panel" class="section" style="display:none;">
+  <h2>Request leave or a WFH change - <span id="picked-range-label"></span></h2>
+  <div style="padding:18px;">
+    <form method="post" action="/calendar/request/" id="leave-form">
+      {% csrf_token %}
+      <input type="hidden" name="start_date" id="start_date">
+      <input type="hidden" name="end_date" id="end_date">
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Type</label>
+        <select name="leave_type" id="leave_type" onchange="toggleFields()" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          {% for value, label in leave_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div id="swap-field" style="display:none; margin-bottom:14px;">
+        {% if my_wfh_days %}
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Which standing WFH day are you moving?</label>
+        <select name="swap_weekday" id="swap_weekday" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;">
+          {% for w in my_wfh_days %}<option value="{{ w.weekday }}">{{ w.get_weekday_display }}</option>{% endfor %}
+        </select>
+        <p style="font-size:12.5px; color:var(--muted); margin:0;">The date you clicked is the new WFH day - it has to be a weekday in the same week as the day you're moving.</p>
+        {% else %}
+        <p style="font-size:13px; color:var(--muted);">You don't have a standing WFH day set up yet to swap - ask your manager to set one up, or use "Request permanent WFH day change" below.</p>
+        {% endif %}
+      </div>
+
+      <div id="standing-fields" style="display:none; margin-bottom:14px;">
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 10px;">This goes to your manager for approval, and changes your regular WFH schedule going forward (not just one week).</p>
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Weekday</label>
+        <select name="standing_weekday" id="standing_weekday_select" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; margin-bottom:10px;">
+          {% for value, label in weekday_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Action</label>
+        <select name="standing_action" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="add">Add as a standing WFH day</option>
+          <option value="remove">Remove as a standing WFH day</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Reason / purpose <span id="reason-required" style="display:none; color:var(--danger);">*</span></label>
+        <textarea name="reason" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
+      </div>
+
+      <button type="submit" class="btn">Send request</button>
+      <button type="button" class="btn" style="background:var(--muted);" onclick="cancelPick()">Cancel</button>
+    </form>
+  </div>
+</div>
+
+{% if my_wfh_days %}
+<div class="section">
+  <h2>My standing WFH days</h2>
+  <div style="padding:14px 18px; font-size:14px;">
+    {% for w in my_wfh_days %}<span class="tag ok">{{ w.get_weekday_display }}</span> {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <script>
 function toggleFields() {
   var type = document.getElementById('leave_type').value;
   document.getElementById('swap-field').style.display = (type === 'wfh_swap') ? 'block' : 'none';
   document.getElementById('standing-fields').style.display = (type === 'wfh_standing') ? 'block' : 'none';
-  document.getElementById('date-fields').style.display = (type === 'wfh_standing') ? 'none' : 'grid';
-  document.getElementById('end-date-wrap').style.display = (type === 'wfh_swap') ? 'none' : 'block';
-  document.getElementById('date-hint').style.display = (type === 'wfh_standing') ? 'none' : 'block';
-  document.getElementById('start-date-label').textContent = (type === 'wfh_swap') ? 'New WFH date' : 'Start date';
   document.getElementById('reason-required').style.display = (type === 'other') ? 'inline' : 'none';
-  clearPickedRange();
+  if ((type === 'wfh_swap' || type === 'wfh_standing') && pickedStart) {
+    pickedEnd = null;
+    highlightRange();
+    document.getElementById('picked-range-label').textContent = formatRangeLabel();
+    document.getElementById('start_date').value = pickedStart;
+    document.getElementById('end_date').value = pickedStart;
+  }
 }
 toggleFields();
 
-// Click-to-select a date range directly on the calendar grid.
-// First click sets the start date and highlights it; a second click
-// on a later date sets the end date and highlights the whole range.
-// For WFH swap (single target date), a second click just moves the
-// single selection instead of building a range.
+// Click-to-select a date range directly on the calendar grid. First
+// click opens the request panel with just that date selected; a
+// second click on a later date extends it into a range. Clicking
+// again after a range is set starts a fresh selection.
 var pickedStart = null, pickedEnd = null;
 
-function clearPickedRange() {
-  document.querySelectorAll('[id^="cal-day-"]').forEach(function(td) {
-    td.style.outline = '';
-  });
-  pickedStart = null;
-  pickedEnd = null;
+function formatRangeLabel() {
+  if (!pickedStart) return '';
+  if (!pickedEnd || pickedEnd === pickedStart) return pickedStart;
+  return pickedStart + ' to ' + pickedEnd;
 }
 
 function highlightRange() {
@@ -167,36 +159,42 @@ function highlightRange() {
   });
 }
 
-function pickDate(dateStr) {
-  var type = document.getElementById('leave_type').value;
-  var startInput = document.getElementById('start_date');
-  var endInput = document.getElementById('end_date');
+function showPanel() {
+  document.getElementById('picker-hint').style.display = 'none';
+  document.getElementById('request-panel').style.display = 'block';
+  document.getElementById('picked-range-label').textContent = formatRangeLabel();
+  document.getElementById('start_date').value = pickedStart;
+  document.getElementById('end_date').value = pickedEnd || pickedStart;
+}
 
-  if (type === 'wfh_swap' || type === 'wfh_standing') {
-    // Single-date types - each click just replaces the one date.
+function cancelPick() {
+  pickedStart = null;
+  pickedEnd = null;
+  highlightRange();
+  document.getElementById('request-panel').style.display = 'none';
+  document.getElementById('picker-hint').style.display = 'block';
+}
+
+function pickDate(dateStr) {
+  var panelOpen = document.getElementById('request-panel').style.display === 'block';
+  var type = panelOpen ? document.getElementById('leave_type').value : null;
+  var singleDateType = (type === 'wfh_swap' || type === 'wfh_standing');
+
+  if (singleDateType) {
+    // These only ever need one date - each click just replaces it.
     pickedStart = dateStr;
     pickedEnd = null;
-    startInput.value = dateStr;
-    highlightRange();
-    return;
-  }
-
-  if (!pickedStart || pickedEnd) {
+  } else if (!pickedStart || pickedEnd) {
     // Starting a fresh selection.
     pickedStart = dateStr;
     pickedEnd = null;
-    startInput.value = dateStr;
-    endInput.value = dateStr;
   } else if (dateStr < pickedStart) {
-    // Clicked before the start - treat it as the new start.
     pickedStart = dateStr;
-    startInput.value = dateStr;
-    endInput.value = pickedStart;
   } else {
     pickedEnd = dateStr;
-    endInput.value = dateStr;
   }
   highlightRange();
+  showPanel();
 }
 </script>
 

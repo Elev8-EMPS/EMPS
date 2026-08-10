@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant
 from .utils import get_user_tenant, can_view_confidential
+from leave.models import WFHDay, WEEKDAY_CHOICES
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,8 @@ def manage_user_create(request):
                     modality_ids = request.POST.getlist("modalities")
                     if modality_ids:
                         profile.modalities.set(modality_ids)
+                    for wd in {int(v) for v in request.POST.getlist("standing_wfh_days")}:
+                        WFHDay.objects.create(tenant=tenant, user=user, weekday=wd)
                 messages.success(request, f"Created account for {username}.")
                 return redirect("manage_user_edit", pk=user.pk)
             except Exception:
@@ -127,6 +130,7 @@ def manage_user_create(request):
         "teams": Team.objects.filter(tenant=tenant).order_by("name"),
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
         "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
+        "weekday_choices": WEEKDAY_CHOICES,
     })
 
 
@@ -163,6 +167,12 @@ def manage_user_edit(request, pk):
                     target_user.last_name = request.POST.get("last_name", "").strip()
                     target_user.teams.set(request.POST.getlist("teams"))
                     target_user.save()
+
+                    weekday_ints = {int(v) for v in request.POST.getlist("standing_wfh_days")}
+                    existing = set(WFHDay.objects.filter(tenant=tenant, user=target_user).values_list("weekday", flat=True))
+                    for wd in weekday_ints - existing:
+                        WFHDay.objects.create(tenant=tenant, user=target_user, weekday=wd)
+                    WFHDay.objects.filter(tenant=tenant, user=target_user, weekday__in=(existing - weekday_ints)).delete()
                 messages.success(request, f"Updated {target_user.username}.")
                 return redirect("/manage/?tab=users")
             except Exception:
@@ -195,6 +205,8 @@ def manage_user_edit(request, pk):
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
         "my_modality_ids": set(profile.modalities.values_list("id", flat=True)),
         "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).exclude(pk=target_user.pk).order_by("username"),
+        "weekday_choices": WEEKDAY_CHOICES,
+        "my_standing_wfh_weekdays": set(WFHDay.objects.filter(tenant=tenant, user=target_user).values_list("weekday", flat=True)),
     })
 
 
