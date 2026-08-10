@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from tenants.models import Tenant
-from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard_visibility
+from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard_visibility, get_display_names
 from crm.models import Proposal, Enquiry
 from delivery.models import Milestone, Task, Project
 from finance.models import Invoice
@@ -79,6 +79,27 @@ def command_centre(request):
         leave_type__in=["annual", "sick", "other"],
     ).select_related("user")
     wfh_today = WFHDay.objects.filter(tenant=tenant, weekday=today.weekday()).select_related("user")
+    # Approved one-off WFH day swaps landing today don't suppress the
+    # tenant-wide "who's out" picture the way they do on the personal
+    # Calendar (that suppression is per-viewer there); here we just
+    # add the swapped-in person too, since a duplicate WFH tag for
+    # someone whose standing day also happens to be today is harmless.
+    wfh_swap_today = LeaveRequest.objects.filter(
+        tenant=tenant, status="approved", leave_type="wfh_swap", start_date=today,
+    ).select_related("user")
+    site_visit_today = Task.objects.filter(
+        tenant=tenant, category="site_visit", due_date=today,
+    ).exclude(status__in=["completed", "cancelled"]).exclude(owner__isnull=True).select_related("owner")
+
+    _names_users = (
+        [o.user for o in out_today] + [w.user for w in wfh_today]
+        + [s.user for s in wfh_swap_today] + [t.owner for t in site_visit_today]
+    )
+    _display_names = get_display_names(_names_users, tenant)
+    for _entry in list(out_today) + list(wfh_today) + list(wfh_swap_today):
+        _entry.display_name = _display_names.get(_entry.user_id, _entry.user.first_name or _entry.user.username)
+    for _t in site_visit_today:
+        _t.owner_display_name = _display_names.get(_t.owner_id, _t.owner.first_name or _t.owner.username)
 
     # Fee Proposals are opt-in visible (see tenants.utils.can_view_proposals).
     # People without access see nothing proposal-related by default, or -
@@ -150,7 +171,9 @@ def command_centre(request):
         # Who's around today
         "out_today": out_today,
         "wfh_today": wfh_today,
-        "today_count": out_today.count() + wfh_today.count(),
+        "wfh_swap_today": wfh_swap_today,
+        "site_visit_today": site_visit_today,
+        "today_count": out_today.count() + wfh_today.count() + wfh_swap_today.count() + site_visit_today.count(),
         # Fee Proposal visibility - "full", "responsible", or "hidden"
         "proposals_visibility": proposals_visibility,
         "my_responsible_enquiries": my_responsible_enquiries,

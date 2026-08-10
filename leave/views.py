@@ -9,12 +9,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from tenants.models import Team
-from tenants.utils import get_user_tenant, can_view_confidential, can_approve_leave
+from tenants.utils import get_user_tenant, can_view_confidential, can_approve_leave, get_display_names
 from delivery.models import Milestone, Project, Task
 from .models import LeaveRequest, WFHDay, CalendarScope, WEEKDAY_CHOICES
 
 
 ACTIVE_STATUSES = ["pending", "approved"]
+
+
+def _week_bounds(d):
+    """Returns (monday, sunday) of the Mon-Sun week containing date d."""
+    monday = d - datetime.timedelta(days=d.weekday())
+    return monday, monday + datetime.timedelta(days=6)
 
 
 def _visible_users(request_user, tenant):
@@ -82,10 +88,21 @@ def calendar_view(request):
         profile__tenant=tenant, profile__manager=request.user
     ).exists()
 
+    all_shown_users = list(visible_users) + [request.user]
+    display_names = get_display_names(all_shown_users, tenant)
+
     leave_qs = LeaveRequest.objects.filter(
         tenant=tenant, status__in=ACTIVE_STATUSES,
         start_date__lte=last_of_month, end_date__gte=first_of_month,
     ).filter(Q(user=request.user) | Q(user__in=visible_users)).distinct().select_related("user")
+    # 'Leave' proper - annual/sick/other. WFH swaps/standing changes are
+    # handled separately below so they render as WFH, not as leave.
+    leave_only_qs = [lr for lr in leave_qs if lr.leave_type in ("annual", "sick", "other")]
+
+    approved_swaps = [
+        lr for lr in leave_qs if lr.leave_type == "wfh_swap" and lr.status == "approved"
+    ]
+    swapped_away = {(lr.user_id, lr.swap_original_date) for lr in approved_swaps if lr.swap_original_date}
 
     wfh_qs = WFHDay.objects.filter(
         tenant=tenant
@@ -112,11 +129,17 @@ def calendar_view(request):
                 week_days.append(None)
                 continue
             d = datetime.date(year, month, day_num)
+            day_leave = [lr for lr in leave_only_qs if lr.start_date <= d <= lr.end_date]
+            day_wfh = [
+                w for w in wfh_qs if w.weekday == d.weekday() and (w.user_id, d) not in swapped_away
+            ] + [lr for lr in approved_swaps if lr.start_date == d]
+            for entry in day_leave + day_wfh:
+                entry.display_name = display_names.get(entry.user_id, entry.user.first_name or entry.user.username)
             week_days.append({
                 "date": d,
                 "is_today": d == today,
-                "leave": [lr for lr in leave_qs if lr.start_date <= d <= lr.end_date],
-                "wfh": [w for w in wfh_qs if w.weekday == d.weekday()],
+                "leave": day_leave,
+                "wfh": day_wfh,
                 "deadlines": [m for m in deadlines_qs if m.deadline == d],
             })
         weeks.append(week_days)
@@ -174,7 +197,39 @@ def leave_request_create(request):
     )
 
     if leave_type == "wfh_swap":
-        leave_request.swap_original_date = request.POST.get("swap_original_date") or None
+        # The user picks which standing WFH day they're moving, and
+        # what date they want to WFH instead - we work out the actual
+        # date of that standing day ourselves (server-side, never
+        # trusting a client-supplied date for it) and require the new
+        # date to fall in the same Mon-Sun week and be a weekday.
+        weekday_raw = request.POST.get("swap_weekday")
+        try:
+            target_date = datetime.date.fromisoformat(start_date)
+            weekday = int(weekday_raw)
+        except (ValueError, TypeError):
+            messages.error(request, "Please choose which WFH day you're swapping and a new date.")
+            return redirect("calendar")
+
+        has_standing_day = WFHDay.objects.filter(tenant=tenant, user=request.user, weekday=weekday).exists()
+        if not has_standing_day:
+            messages.error(request, "That's not currently one of your standing WFH days.")
+            return redirect("calendar")
+
+        monday, sunday = _week_bounds(target_date)
+        original_date = monday + datetime.timedelta(days=weekday)
+
+        if target_date == original_date:
+            messages.error(request, "Please pick a different day to swap to.")
+            return redirect("calendar")
+        if target_date.weekday() >= 5:
+            messages.error(request, "The new WFH day has to be a weekday (Monday to Friday).")
+            return redirect("calendar")
+
+        leave_request.standing_weekday = weekday
+        leave_request.swap_original_date = original_date
+        leave_request.start_date = target_date
+        leave_request.end_date = target_date
+
     if leave_type == "wfh_standing":
         weekday = request.POST.get("standing_weekday")
         action = request.POST.get("standing_action")

@@ -124,6 +124,7 @@ class Task(TenantModel):
         ("compliance", "Compliance"),
         ("internal", "Internal"),
         ("personal", "Personal"),
+        ("site_visit", "Site visit"),
     ]
 
     title = models.CharField(max_length=255)

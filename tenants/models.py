@@ -25,6 +25,16 @@ class Tenant(models.Model):
         help_text="Controls what people WITHOUT Fee Proposal access see on their Command Centre.",
     )
 
+    NAME_DISPLAY_CHOICES = [
+        ("auto", "First name only - add last initial automatically if two people share a first name"),
+        ("first_name", "First name only, always (even if it's ambiguous)"),
+        ("first_last_initial", "First name + last initial, always"),
+    ]
+    calendar_name_display = models.CharField(
+        max_length=20, choices=NAME_DISPLAY_CHOICES, default="auto",
+        help_text="How people's names are shown on the Calendar and dashboard 'who's out today' widgets.",
+    )
+
     def __str__(self):
         return self.name
 

@@ -37,13 +37,15 @@
   </div>
   {% endif %}
 
-  {% if out_today or wfh_today %}
+  {% if out_today or wfh_today or wfh_swap_today or site_visit_today %}
   <div class="section">
     <h2>Today <span class="count">({{ today_count }})</span></h2>
     <div style="padding:14px 18px;">
-      {% for lr in out_today %}<span class="tag danger" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ lr.user.get_full_name|default:lr.user.username }} - {{ lr.get_leave_type_display }}</span>{% endfor %}
-      {% for w in wfh_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ w.user.get_full_name|default:w.user.username }} - WFH</span>{% endfor %}
-      {% if not out_today and not wfh_today %}<span style="color:var(--muted); font-size:13.5px;">Everyone's in today.</span>{% endif %}
+      {% for lr in out_today %}<span class="tag danger" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ lr.display_name }} - {{ lr.get_leave_type_display }}</span>{% endfor %}
+      {% for w in wfh_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ w.display_name }} - WFH</span>{% endfor %}
+      {% for s in wfh_swap_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ s.display_name }} - WFH (swapped)</span>{% endfor %}
+      {% for t in site_visit_today %}<span class="tag warn" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ t.owner_display_name }} - Site visit</span>{% endfor %}
+      {% if not out_today and not wfh_today and not wfh_swap_today and not site_visit_today %}<span style="color:var(--muted); font-size:13.5px;">Everyone's in today.</span>{% endif %}
     </div>
   </div>
   {% endif %}

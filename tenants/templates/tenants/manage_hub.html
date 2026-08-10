@@ -69,6 +69,18 @@
         {{ label }}
       </label>
       {% endfor %}
+
+      <h2 style="margin-top:28px;">Calendar name display</h2>
+      <p style="font-size:13.5px; color:var(--muted);">
+        How people's names are shown on the Calendar and the dashboard "who's out today" widget.
+      </p>
+      {% for value, label in name_display_choices %}
+      <label style="display:block; margin-bottom:12px; font-size:14px; padding:12px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
+        <input type="radio" name="calendar_name_display" value="{{ value }}" {% if user_tenant.calendar_name_display == value %}checked{% endif %}>
+        {{ label }}
+      </label>
+      {% endfor %}
+
       <button type="submit" class="btn" style="margin-top:8px;">Save</button>
     </form>
   </div>

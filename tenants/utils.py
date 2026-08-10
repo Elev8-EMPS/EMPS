@@ -93,3 +93,44 @@ def get_open_todo_count(user):
     return Task.objects.filter(status__in=open_statuses).filter(
         models.Q(owner=user) | models.Q(assigned_team__members=user)
     ).distinct().count()
+
+
+def get_display_names(users, tenant):
+    """
+    Builds a {user_id: display_name} dict for a group of people shown
+    together on the Calendar or a dashboard 'who's out today' widget,
+    following the tenant's calendar_name_display setting:
+      - 'first_name': always just the first name.
+      - 'first_last_initial': always first name + last initial.
+      - 'auto' (default): first name only, but if two people in this
+        SAME group share a first name, add their last initial to both
+        so they're told apart - only for the ones that actually clash.
+    Falls back to username for anyone with no first name set.
+    """
+    mode = getattr(tenant, "calendar_name_display", "auto") if tenant else "auto"
+    users = list(users)
+
+    def base_name(u):
+        return u.first_name.strip() or u.username
+
+    def with_initial(u):
+        name = base_name(u)
+        if u.first_name.strip() and u.last_name.strip():
+            return f"{name} {u.last_name.strip()[0].upper()}"
+        return name
+
+    if mode == "first_name":
+        return {u.id: base_name(u) for u in users}
+    if mode == "first_last_initial":
+        return {u.id: with_initial(u) for u in users}
+
+    # auto: only disambiguate first names that actually clash in this group
+    from collections import Counter
+    first_name_counts = Counter(base_name(u).lower() for u in users)
+    result = {}
+    for u in users:
+        if first_name_counts[base_name(u).lower()] > 1:
+            result[u.id] = with_initial(u)
+        else:
+            result[u.id] = base_name(u)
+    return result

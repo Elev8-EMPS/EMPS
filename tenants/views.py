@@ -48,8 +48,14 @@ def manage_hub(request):
             valid_values = {v for v, _ in Tenant.DASHBOARD_VISIBILITY_CHOICES}
             if visibility in valid_values:
                 tenant.dashboard_visibility = visibility
-                tenant.save()
-                messages.success(request, "Settings saved.")
+
+            name_display = request.POST.get("calendar_name_display", "auto")
+            valid_name_display = {v for v, _ in Tenant.NAME_DISPLAY_CHOICES}
+            if name_display in valid_name_display:
+                tenant.calendar_name_display = name_display
+
+            tenant.save()
+            messages.success(request, "Settings saved.")
         return redirect("/manage/?tab=settings")
 
     return render(request, "tenants/manage_hub.html", {
@@ -60,6 +66,7 @@ def manage_hub(request):
         "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
         "visibility_choices": Tenant.DASHBOARD_VISIBILITY_CHOICES if tab == "settings" else None,
+        "name_display_choices": Tenant.NAME_DISPLAY_CHOICES if tab == "settings" else None,
     })
 
 
