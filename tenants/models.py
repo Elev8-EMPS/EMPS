@@ -144,6 +144,20 @@ class Modality(models.Model):
         return self.name
 
 
+class DeadlineCategory(models.Model):
+    """
+    What kind of scheduled deadline/meeting this is - e.g. 'Client
+    Review', 'Authority Submission', 'Design Review'. Admin-configurable
+    per tenant, same pattern as Modality.
+    """
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="deadline_categories")
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
 class ChecklistItemTemplate(models.Model):
     """
     A checklist item definition. If modality is blank, it's a
