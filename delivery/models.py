@@ -80,21 +80,58 @@ class Milestone(TenantModel):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="milestones")
     milestone_type = models.CharField(max_length=100)
+    category = models.ForeignKey(
+        "tenants.DeadlineCategory", null=True, blank=True, on_delete=models.SET_NULL, related_name="milestones",
+        help_text="What kind of deadline/meeting this is.",
+    )
     deadline = models.DateField()
+    deadline_time = models.TimeField(
+        null=True, blank=True,
+        help_text="Optional - if set, people involved get an in-app popup reminder around this time on the day.",
+    )
     responsible_user = models.ForeignKey(
         "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="responsible_milestones"
+    )
+    created_by = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="created_milestones"
     )
     priority = models.CharField(max_length=20, default="normal")
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="scheduled")
     forecast_issue_date = models.DateField(null=True, blank=True)
     actual_issue_date = models.DateField(null=True, blank=True)
     invoice_required = models.BooleanField(default=False)
+    payment_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="What % of the project's total fee this stage represents, for the payment schedule. "
+                   "Only relevant when 'Invoice required' is ticked.",
+    )
     director_approval_required = models.BooleanField(default=False)
     director_approval_status = models.CharField(max_length=30, blank=True)
     notes = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.project.project_number} - {self.milestone_type}"
+
+    @property
+    def stage_value(self):
+        """This stage's share of the project's total fee, if both the
+        fee and this stage's payment percentage are known."""
+        fee = self.project.original_proposal.fee_amount if self.project.original_proposal_id else None
+        if fee is None or self.payment_percentage is None:
+            return None
+        return fee * self.payment_percentage / 100
+
+    @property
+    def invoiced_for_stage(self):
+        from django.db.models import Sum
+        return self.invoices.aggregate(total=Sum("total"))["total"] or 0
+
+    @property
+    def still_to_invoice(self):
+        value = self.stage_value
+        if value is None:
+            return None
+        return value - self.invoiced_for_stage
 
 
 class Task(TenantModel):
