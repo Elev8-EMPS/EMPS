@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant
+from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant, DeadlineCategory
 from .utils import get_user_tenant, can_view_confidential
 from leave.models import WFHDay, WEEKDAY_CHOICES
 
@@ -59,6 +59,18 @@ def manage_hub(request):
             messages.success(request, "Settings saved.")
         return redirect("/manage/?tab=settings")
 
+    if request.method == "POST" and tab == "deadline_categories" and tenant:
+        action = request.POST.get("deadline_category_action")
+        if action == "create":
+            name = request.POST.get("name", "").strip()
+            if name:
+                DeadlineCategory.objects.create(tenant=tenant, name=name)
+                messages.success(request, f"Added '{name}'.")
+        elif action == "delete":
+            DeadlineCategory.objects.filter(tenant=tenant, pk=request.POST.get("category_id")).delete()
+            messages.success(request, "Deleted.")
+        return redirect("/manage/?tab=deadline_categories")
+
     return render(request, "tenants/manage_hub.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
@@ -66,6 +78,7 @@ def manage_hub(request):
         "users": User.objects.filter(profile__tenant=tenant).select_related("profile").order_by("username") if tab == "users" else None,
         "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
+        "deadline_categories": DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tab == "deadline_categories" else None,
         "visibility_choices": Tenant.DASHBOARD_VISIBILITY_CHOICES if tab == "settings" else None,
         "name_display_choices": Tenant.NAME_DISPLAY_CHOICES if tab == "settings" else None,
     })

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}New Deadline - EPMS{% endblock %}
+{% block header %}New Deadline{% endblock %}
+{% block content %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Title <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="milestone_type" required maxlength="100" placeholder="e.g. Design review meeting" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project <span style="color:var(--danger);">*</span></label>
+          <select name="project" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— Select —</option>
+            {% for p in projects %}<option value="{{ p.pk }}" {% if preselected_project == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.project_number }} - {{ p.name }}</option>{% endfor %}
+          </select>
+          <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">People on teams whose discipline matches this project's modalities will see this on their Calendar and get a reminder.</p>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Category</label>
+          <select name="category" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Date <span style="color:var(--danger);">*</span></label>
+          <input type="date" name="deadline" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Time</label>
+          <input type="time" name="deadline_time" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">If set, people involved get an in-app popup around this time.</p>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Responsible person</label>
+          <select name="responsible_user" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px; padding:14px; border:1px solid var(--border); border-radius:8px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:10px;">
+          <input type="checkbox" name="invoice_required" id="invoice_required" onchange="document.getElementById('pct-field').style.display = this.checked ? 'block' : 'none'"> This is part of the payment schedule (will need invoicing)
+        </label>
+        <div id="pct-field" style="display:none;">
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">% of the project's total fee</label>
+          <input type="number" name="payment_percentage" step="0.01" min="0" max="100" style="width:100%; max-width:200px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">Only visible to Directors, Company Admin, and this project's manager/director.</p>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Notes</label>
+        <textarea name="notes" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
+      </div>
+
+      <button type="submit" class="btn">Create deadline</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

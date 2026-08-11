@@ -109,5 +109,47 @@
     </main>
   </div>
 </div>
+
+{% if request.user.is_authenticated %}
+<div id="deadline-reminder-stack" style="position:fixed; top:16px; right:16px; z-index:9999; width:320px;"></div>
+<script>
+(function() {
+  function dismissedKey(id) { return 'deadline-reminder-dismissed-' + id; }
+
+  function showReminder(item) {
+    if (localStorage.getItem(dismissedKey(item.id))) return;
+    if (document.getElementById('reminder-' + item.id)) return; // already showing
+
+    var box = document.createElement('div');
+    box.id = 'reminder-' + item.id;
+    box.style.cssText = 'background:#fff; border:1px solid #e5e7eb; border-left:4px solid #d97706; ' +
+      'border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.12); padding:14px 16px; margin-bottom:10px; font-size:14px;';
+    box.innerHTML =
+      '<div style="font-weight:600; margin-bottom:4px;">' + item.time + ' - ' + item.title + '</div>' +
+      '<div style="color:#6b7280; font-size:12.5px; margin-bottom:10px;">' + item.project_number +
+      (item.category ? ' &middot; ' + item.category : '') + '</div>' +
+      '<a href="' + item.url + '" style="font-size:13px; color:#2563eb; text-decoration:none; margin-right:14px;">View</a>' +
+      '<a href="#" class="dismiss-link" style="font-size:13px; color:#6b7280; text-decoration:none;">Dismiss</a>';
+    box.querySelector('.dismiss-link').onclick = function(e) {
+      e.preventDefault();
+      localStorage.setItem(dismissedKey(item.id), '1');
+      box.remove();
+    };
+    document.getElementById('deadline-reminder-stack').appendChild(box);
+  }
+
+  function checkReminders() {
+    fetch('/deadlines/due-reminders/', {credentials: 'same-origin'})
+      .then(function(r) { return r.ok ? r.json() : {reminders: []}; })
+      .then(function(data) { (data.reminders || []).forEach(showReminder); })
+      .catch(function() {});
+  }
+
+  checkReminders();
+  setInterval(checkReminders, 60000);
+})();
+</script>
+{% endif %}
+
 </body>
 </html>

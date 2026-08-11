@@ -57,9 +57,12 @@
 
 {% elif tab == 'milestones' %}
 <div class="section">
-  <h2>Milestones</h2>
-  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}</span></a></li>{% endfor %}</ul>
-  {% else %}<div class="empty">No milestones yet. Add one via <a href="/admin/delivery/milestone/add/">Admin</a>.</div>{% endif %}
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border);">
+    <h2 style="border:none; padding:0; margin:0; background:none;">Milestones</h2>
+    <a href="/milestones/new/?project={{ project.pk }}" class="btn" style="background:var(--ok);">+ New deadline</a>
+  </div>
+  {% if milestones %}<ul class="rows">{% for m in milestones %}<li><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }} <span class="tag {% if m.status == 'overdue' or m.status == 'at_risk' %}danger{% elif m.status == 'issued' or m.status == 'paid' %}ok{% else %}warn{% endif %}">{{ m.get_status_display }} &middot; {{ m.deadline }}{% if m.deadline_time %} {{ m.deadline_time|time:"H:i" }}{% endif %}</span></a></li>{% endfor %}</ul>
+  {% else %}<div class="empty">No milestones yet.</div>{% endif %}
 </div>
 
 {% elif tab == 'tasks' %}
@@ -77,6 +80,32 @@
 </div>
 
 {% elif tab == 'finance' %}
+{% if can_view_project_financials %}
+{% if project.original_proposal.fee_amount %}
+<div class="section">
+  <h2>Payment schedule <span style="font-weight:400; color:var(--muted); font-size:13px;">- total fee ${{ project.original_proposal.fee_amount }}</span></h2>
+  {% if payment_schedule %}
+  <table class="list">
+    <tr><th>Stage</th><th>Deadline</th><th>%</th><th>Stage value</th><th>Invoiced</th><th>Still to invoice</th></tr>
+    {% for m in payment_schedule %}
+    <tr>
+      <td><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }}</a></td>
+      <td>{{ m.deadline }}</td>
+      <td>{% if m.payment_percentage %}{{ m.payment_percentage }}%{% else %}—{% endif %}</td>
+      <td>{% if m.stage_value %}${{ m.stage_value }}{% else %}—{% endif %}</td>
+      <td>${{ m.invoiced_for_stage }}</td>
+      <td>
+        {% if m.still_to_invoice %}
+        <span class="tag {% if m.still_to_invoice > 0 %}warn{% else %}ok{% endif %}">${{ m.still_to_invoice }}</span>
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="empty">No payment-schedule stages marked yet - tick "part of the payment schedule" when creating a deadline.</div>{% endif %}
+</div>
+{% endif %}
+{% endif %}
 {% if can_view_financials %}
 <div class="section">
   <h2>Invoices</h2>

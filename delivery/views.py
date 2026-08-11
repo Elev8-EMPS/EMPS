@@ -1,11 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+import datetime
 
-from tenants.models import Team, Modality, ChecklistItemTemplate
-from tenants.utils import get_user_tenant
+from tenants.models import Team, Modality, ChecklistItemTemplate, DeadlineCategory
+from tenants.utils import get_user_tenant, can_view_confidential, can_view_financials
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
@@ -311,6 +313,10 @@ def project_detail(request, pk):
         "tasks": project.tasks.order_by("due_date") if tab == "tasks" else None,
         "documents": project.documents.order_by("-uploaded_at") if tab == "documents" else None,
         "invoices": project.invoices.order_by("-due_date") if tab == "finance" else None,
+        "can_view_project_financials": can_view_financials(request.user) or request.user.id in (
+            project.project_manager_id, project.director_id
+        ),
+        "payment_schedule": project.milestones.filter(invoice_required=True).order_by("deadline") if tab == "finance" else None,
         "open_todos": project.tasks.exclude(status__in=["completed", "cancelled"]).order_by("due_date")
         if tab == "overview" else None,
         "communications": project.communications.order_by("-occurred_at") if tab == "communications" else None,
@@ -338,6 +344,56 @@ def checklist_toggle(request, pk):
         item.done_at = timezone.now() if item.is_done else None
         item.save()
     return redirect(f"/projects/{item.project_id}/?tab=checklist")
+
+
+@login_required
+def milestone_create(request):
+    tenant = get_user_tenant(request)
+
+    if request.method == "POST":
+        milestone = Milestone(
+            tenant=tenant,
+            created_by=request.user,
+            milestone_type=request.POST.get("milestone_type", "").strip(),
+            deadline=request.POST.get("deadline") or None,
+            deadline_time=request.POST.get("deadline_time") or None,
+            notes=request.POST.get("notes", "").strip(),
+            invoice_required=request.POST.get("invoice_required") == "on",
+        )
+        project_id = request.POST.get("project")
+        category_id = request.POST.get("category")
+        responsible_id = request.POST.get("responsible_user")
+        payment_percentage = request.POST.get("payment_percentage", "").strip()
+
+        if project_id:
+            milestone.project_id = project_id
+        if category_id:
+            milestone.category_id = category_id
+        if responsible_id:
+            milestone.responsible_user_id = responsible_id
+        if milestone.invoice_required and payment_percentage:
+            try:
+                milestone.payment_percentage = float(payment_percentage)
+            except ValueError:
+                pass
+
+        if milestone.milestone_type and milestone.project_id and milestone.deadline:
+            milestone.save()
+            return redirect("milestone_detail", pk=milestone.pk)
+
+    preselected_project = request.GET.get("project", "")
+    projects = Project.objects.filter(tenant=tenant).order_by("project_number") if tenant else Project.objects.none()
+    users = User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none()
+    categories = DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tenant else DeadlineCategory.objects.none()
+
+    return render(request, "delivery/milestone_create.html", {
+        "active_nav": "milestones",
+        "user_tenant": tenant,
+        "projects": projects,
+        "users": users,
+        "categories": categories,
+        "preselected_project": preselected_project,
+    })
 
 
 @login_required
@@ -378,7 +434,58 @@ def milestone_detail(request, pk):
         "user_tenant": tenant,
         "milestone": milestone,
         "invoices": milestone.invoices.all(),
+        "can_view_project_financials": can_view_financials(request.user) or request.user.id in (
+            milestone.project.project_manager_id, milestone.project.director_id
+        ),
     })
+
+
+@login_required
+def due_reminders(request):
+    """
+    Polled by every logged-in page every ~60s (see base.html) to
+    surface an in-app popup for deadlines whose scheduled time has
+    just arrived. A deadline is relevant to someone if they're the
+    responsible person, this project's manager/director, a
+    Director/Company Admin, or on a team whose discipline matches
+    the project's modalities - same matching used on the Calendar.
+    """
+    tenant = get_user_tenant(request)
+    if tenant is None:
+        return JsonResponse({"reminders": []})
+
+    now = timezone.localtime(timezone.now())
+    today = now.date()
+    window_start = (now - datetime.timedelta(minutes=20)).time()
+
+    candidates = Milestone.objects.filter(
+        tenant=tenant, deadline=today, deadline_time__isnull=False,
+        deadline_time__lte=now.time(), deadline_time__gte=window_start,
+    ).select_related("project")
+
+    if not can_view_confidential(request.user):
+        my_team_modality_ids = list(
+            request.user.teams.filter(tenant=tenant).values_list("modalities__id", flat=True).distinct()
+        )
+        modality_q = Q(project__modalities__id__in=my_team_modality_ids) if my_team_modality_ids else Q()
+        candidates = candidates.filter(
+            Q(responsible_user=request.user)
+            | Q(project__project_manager=request.user)
+            | Q(project__director=request.user)
+            | modality_q
+        ).distinct()
+
+    return JsonResponse({"reminders": [
+        {
+            "id": m.pk,
+            "title": m.milestone_type,
+            "project_number": m.project.project_number,
+            "time": m.deadline_time.strftime("%H:%M"),
+            "category": m.category.name if m.category_id else "",
+            "url": f"/milestones/{m.pk}/",
+        }
+        for m in candidates
+    ]})
 
 
 @login_required
