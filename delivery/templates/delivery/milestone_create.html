@@ -10,7 +10,7 @@
 
       <div style="margin-bottom:16px;">
         <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Title <span style="color:var(--danger);">*</span></label>
-        <input type="text" name="milestone_type" required maxlength="100" placeholder="e.g. Design review meeting" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <input type="text" name="milestone_type" required maxlength="100" value="{{ form_data.milestone_type }}" placeholder="e.g. Design review meeting" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
@@ -26,7 +26,7 @@
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Category</label>
           <select name="category" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
             <option value="">— None —</option>
-            {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+            {% for c in categories %}<option value="{{ c.pk }}" {% if form_data.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
           </select>
         </div>
       </div>
@@ -34,39 +34,40 @@
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Date <span style="color:var(--danger);">*</span></label>
-          <input type="date" name="deadline" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <input type="date" name="deadline" required value="{{ form_data.deadline }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
         </div>
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Time</label>
-          <input type="time" name="deadline_time" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <input type="time" name="deadline_time" value="{{ form_data.deadline_time }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
           <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">If set, people involved get an in-app popup around this time.</p>
         </div>
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Responsible person</label>
           <select name="responsible_user" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
             <option value="">— None —</option>
-            {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+            {% for u in users %}<option value="{{ u.pk }}" {% if form_data.responsible_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
           </select>
         </div>
       </div>
 
       <div style="margin-bottom:16px; padding:14px; border:1px solid var(--border); border-radius:8px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:10px;">
-          <input type="checkbox" name="invoice_required" id="invoice_required" onchange="document.getElementById('pct-field').style.display = this.checked ? 'block' : 'none'"> This is part of the payment schedule (will need invoicing)
+          <input type="checkbox" name="invoice_required" id="invoice_required" {% if form_data.invoice_required == "on" %}checked{% endif %} onchange="document.getElementById('pct-field').style.display = this.checked ? 'block' : 'none'"> This is part of the payment schedule (will need invoicing)
         </label>
-        <div id="pct-field" style="display:none;">
+        <div id="pct-field" style="{% if form_data.invoice_required != "on" %}display:none;{% endif %}">
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">% of the project's total fee</label>
-          <input type="number" name="payment_percentage" step="0.01" min="0" max="100" style="width:100%; max-width:200px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <input type="number" name="payment_percentage" step="0.01" min="0" max="100" value="{{ form_data.payment_percentage }}" style="width:100%; max-width:200px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
           <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">Only visible to Directors, Company Admin, and this project's manager/director.</p>
         </div>
       </div>
 
       <div style="margin-bottom:20px;">
         <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Notes</label>
-        <textarea name="notes" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
+        <textarea name="notes" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;">{{ form_data.notes }}</textarea>
       </div>
 
       <button type="submit" class="btn">Create deadline</button>
+      <a href="{% if preselected_project %}/projects/{{ preselected_project }}/?tab=milestones{% else %}/milestones/{% endif %}" class="btn" style="background:var(--muted);">Cancel</a>
     </form>
   </div>
 </div>

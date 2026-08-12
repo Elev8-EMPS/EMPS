@@ -42,8 +42,9 @@
     <div class="field-row"><div class="k">Stage value</div><div>{% if milestone.stage_value %}${{ milestone.stage_value }}{% else %}— (set the project's fee on its proposal first){% endif %}</div></div>
     <div class="field-row"><div class="k">Invoiced so far</div><div>${{ milestone.invoiced_for_stage }}</div></div>
     <div class="field-row"><div class="k">Still to invoice</div><div>{% if milestone.still_to_invoice %}<span class="tag {% if milestone.still_to_invoice > 0 %}warn{% else %}ok{% endif %}">${{ milestone.still_to_invoice }}</span>{% else %}—{% endif %}</div></div>
-    {% if milestone.still_to_invoice > 0 %}
+    {% if milestone.still_to_invoice > 0 or not milestone.stage_value %}
     <a href="/milestones/{{ milestone.pk }}/invoice/new/" class="btn" style="margin-top:6px; background:var(--ok);">+ Create invoice for this stage</a>
+    {% if not milestone.stage_value %}<p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">No % set (or the project has no fee amount yet) - you can still create an invoice with a manual amount.</p>{% endif %}
     {% endif %}
   </div>
 </div>
@@ -55,12 +56,6 @@
   <ul class="rows">
     {% for i in invoices %}<li><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }} <span class="tag">{{ i.get_status_display }}</span></a></li>{% endfor %}
   </ul>
-</div>
-{% elif milestone.invoice_required %}
-<div class="section" style="text-align:center;">
-  <div style="padding:18px;">
-    <a class="btn" href="/admin/finance/invoice/add/?milestone={{ milestone.pk }}&project={{ milestone.project.pk }}&organisation={{ milestone.project.client_organisation.pk }}">Create invoice from this milestone</a>
-  </div>
 </div>
 {% endif %}
 

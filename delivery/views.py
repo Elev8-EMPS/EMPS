@@ -384,8 +384,18 @@ def milestone_create(request):
         if milestone.milestone_type and milestone.project_id and milestone.deadline:
             milestone.save()
             return redirect("milestone_detail", pk=milestone.pk)
+        else:
+            missing = []
+            if not milestone.milestone_type:
+                missing.append("a title")
+            if not milestone.project_id:
+                missing.append("a project")
+            if not milestone.deadline:
+                missing.append("a date")
+            messages.error(request, f"Please fill in {' and '.join(missing)}.")
 
-    preselected_project = request.GET.get("project", "")
+    preselected_project = request.POST.get("project") or request.GET.get("project", "")
+    form_data = request.POST if request.method == "POST" else {}
     projects = Project.objects.filter(tenant=tenant).order_by("project_number") if tenant else Project.objects.none()
     users = User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none()
     categories = DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tenant else DeadlineCategory.objects.none()
@@ -397,6 +407,7 @@ def milestone_create(request):
         "users": users,
         "categories": categories,
         "preselected_project": preselected_project,
+        "form_data": form_data,
     })
 
 
