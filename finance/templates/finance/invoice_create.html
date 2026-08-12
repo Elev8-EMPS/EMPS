@@ -9,18 +9,36 @@
       For <strong>{{ milestone.milestone_type }}</strong> on {{ project.project_number }} - {{ project.name }}.
       Created as a draft here in EPMS; if you use Xero or MYOB you'll still need to raise the matching invoice there too until that integration is connected.
     </p>
-    <form method="post">
+    <form method="post" id="invoice-form">
       {% csrf_token %}
+
+      {% if total_fee %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">% of the project's total fee (${{ total_fee }}) to invoice</label>
+        <input type="number" id="percentage" step="0.01" min="0" max="100" value="{{ suggested_percentage|default:'' }}" placeholder="e.g. 25" oninput="calcFromPercentage()" style="width:100%; max-width:200px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">Pick a % and the amount below fills in automatically - or just type the dollar amount directly instead.</p>
+      </div>
+      {% endif %}
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Amount (excl. tax) <span style="color:var(--danger);">*</span></label>
-          <input type="number" name="amount_excl_tax" step="0.01" min="0" required value="{{ suggested_amount }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-          <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">Suggested from this stage's remaining amount to invoice - change if needed.</p>
+          <input type="number" name="amount_excl_tax" id="amount_excl_tax" step="0.01" min="0" required value="{{ suggested_amount }}" oninput="calcFromAmount()" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
         </div>
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Due date</label>
           <input type="date" name="due_date" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; padding:14px; border:1px solid var(--border); border-radius:8px; background:#fafafa;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">GST ({{ tax_rate_percent }}%)</label>
+          <div id="tax_display" style="font-size:16px; font-weight:600;">$0.00</div>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Total (incl. GST)</label>
+          <div id="total_display" style="font-size:16px; font-weight:600;">$0.00</div>
         </div>
       </div>
 
@@ -34,5 +52,36 @@
     </form>
   </div>
 </div>
+
+<script>
+var TAX_RATE = {{ tax_rate_percent }} / 100;
+var TOTAL_FEE = {{ total_fee|default:"null" }};
+
+function updateTotals() {
+  var amount = parseFloat(document.getElementById('amount_excl_tax').value) || 0;
+  var tax = amount * TAX_RATE;
+  var total = amount + tax;
+  document.getElementById('tax_display').textContent = '$' + tax.toFixed(2);
+  document.getElementById('total_display').textContent = '$' + total.toFixed(2);
+}
+
+function calcFromPercentage() {
+  if (!TOTAL_FEE) return;
+  var pct = parseFloat(document.getElementById('percentage').value) || 0;
+  document.getElementById('amount_excl_tax').value = (TOTAL_FEE * pct / 100).toFixed(2);
+  updateTotals();
+}
+
+function calcFromAmount() {
+  var pctField = document.getElementById('percentage');
+  if (TOTAL_FEE && pctField) {
+    var amount = parseFloat(document.getElementById('amount_excl_tax').value) || 0;
+    pctField.value = (amount / TOTAL_FEE * 100).toFixed(2);
+  }
+  updateTotals();
+}
+
+updateTotals();
+</script>
 
 {% endblock %}

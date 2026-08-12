@@ -66,20 +66,28 @@
     </form>
   </div>
 </div>
+{% for c in deadline_categories %}
+<form id="editcat-{{ c.pk }}" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="deadline_category_action" value="update">
+  <input type="hidden" name="category_id" value="{{ c.pk }}">
+</form>
+<form id="delcat-{{ c.pk }}" method="post" onsubmit="return confirm('Delete this category? Deadlines using it will keep their date but lose the category.');">
+  {% csrf_token %}
+  <input type="hidden" name="deadline_category_action" value="delete">
+  <input type="hidden" name="category_id" value="{{ c.pk }}">
+</form>
+{% endfor %}
 <table class="list">
   <tr><th>Category</th><th>Colour</th><th>Used on</th><th></th></tr>
   {% for c in deadline_categories %}
   <tr>
-    <td>{{ c.name }}</td>
-    <td><span style="display:inline-block; width:18px; height:18px; border-radius:4px; background:{{ c.color }}; vertical-align:middle; border:1px solid var(--border);"></span></td>
+    <td><input type="text" name="name" value="{{ c.name }}" required form="editcat-{{ c.pk }}" style="width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13.5px;"></td>
+    <td><input type="color" name="color" value="{{ c.color }}" form="editcat-{{ c.pk }}" style="width:38px; height:32px; padding:1px; border:1px solid var(--border); border-radius:6px; cursor:pointer;"></td>
     <td>{{ c.milestones.count }} deadline{{ c.milestones.count|pluralize }}</td>
-    <td style="text-align:right;">
-      <form method="post" onsubmit="return confirm('Delete this category? Deadlines using it will keep their date but lose the category.');">
-        {% csrf_token %}
-        <input type="hidden" name="deadline_category_action" value="delete">
-        <input type="hidden" name="category_id" value="{{ c.pk }}">
-        <button type="submit" class="btn" style="background:var(--danger);">Delete</button>
-      </form>
+    <td style="text-align:right; white-space:nowrap;">
+      <button type="submit" form="editcat-{{ c.pk }}" class="btn" style="padding:5px 10px; font-size:12.5px;">Save</button>
+      <button type="submit" form="delcat-{{ c.pk }}" class="btn" style="background:var(--danger); padding:5px 10px; font-size:12.5px;">Delete</button>
     </td>
   </tr>
   {% empty %}

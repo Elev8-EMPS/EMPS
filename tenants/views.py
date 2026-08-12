@@ -67,6 +67,15 @@ def manage_hub(request):
             if name:
                 DeadlineCategory.objects.create(tenant=tenant, name=name, color=color)
                 messages.success(request, f"Added '{name}'.")
+        elif action == "update":
+            category = DeadlineCategory.objects.filter(tenant=tenant, pk=request.POST.get("category_id")).first()
+            name = request.POST.get("name", "").strip()
+            color = request.POST.get("color", "").strip()
+            if category and name:
+                category.name = name
+                category.color = color or category.color
+                category.save()
+                messages.success(request, f"Updated '{name}'.")
         elif action == "delete":
             DeadlineCategory.objects.filter(tenant=tenant, pk=request.POST.get("category_id")).delete()
             messages.success(request, "Deleted.")

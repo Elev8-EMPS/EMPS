@@ -13,6 +13,7 @@ def invoice_create(request, milestone_pk):
     tenant = get_user_tenant(request)
     milestone = get_object_or_404(Milestone.objects.select_related("project"), pk=milestone_pk, tenant=tenant)
     project = milestone.project
+    TAX_RATE = 0.10  # Australian GST
 
     can_create = can_view_financials(request.user) or request.user.id in (
         project.project_manager_id, project.director_id
@@ -24,10 +25,13 @@ def invoice_create(request, milestone_pk):
     if request.method == "POST":
         amount = request.POST.get("amount_excl_tax", "").strip()
         try:
-            amount_val = float(amount)
+            amount_val = round(float(amount), 2)
         except ValueError:
             messages.error(request, "Enter a valid amount.")
             return redirect("invoice_create", milestone_pk=milestone.pk)
+
+        tax_val = round(amount_val * TAX_RATE, 2)
+        total_val = amount_val + tax_val
 
         number = f"{project.project_number}-INV{project.invoices.count() + 1}"
         while Invoice.objects.filter(invoice_number=number).exists():
@@ -36,7 +40,7 @@ def invoice_create(request, milestone_pk):
         invoice = Invoice.objects.create(
             tenant=tenant, invoice_number=number, project=project,
             organisation=project.client_organisation, milestone=milestone,
-            amount_excl_tax=amount_val, tax=0, total=amount_val,
+            amount_excl_tax=amount_val, tax=tax_val, total=total_val,
             due_date=request.POST.get("due_date") or None,
             notes=request.POST.get("notes", "").strip(),
         )
@@ -44,12 +48,16 @@ def invoice_create(request, milestone_pk):
         return redirect("invoice_detail", pk=invoice.pk)
 
     suggested_amount = milestone.still_to_invoice or milestone.stage_value or 0
+    total_fee = project.original_proposal.fee_amount if project.original_proposal_id else None
     return render(request, "finance/invoice_create.html", {
         "active_nav": "invoices",
         "user_tenant": tenant,
         "milestone": milestone,
         "project": project,
         "suggested_amount": suggested_amount,
+        "total_fee": total_fee,
+        "suggested_percentage": milestone.payment_percentage,
+        "tax_rate_percent": TAX_RATE * 100,
     })
 
 
