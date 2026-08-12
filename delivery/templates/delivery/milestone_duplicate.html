@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Duplicate Deadline - EPMS{% endblock %}
+{% block header %}Duplicate Deadline{% endblock %}
+{% block content %}
+
+<div class="section">
+  <div style="padding:22px;">
+    <p style="color:var(--muted); font-size:13.5px; margin-top:0;">
+      Copying <strong>{{ original.milestone_type }}</strong> ({{ original.project.project_number }}) to a new date. Everything else - category, responsible person, payment schedule settings - carries over; you can change the title if needed.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Title</label>
+        <input type="text" name="milestone_type" value="{{ original.milestone_type }}" maxlength="100" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">New date <span style="color:var(--danger);">*</span></label>
+          <input type="date" name="deadline" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">New time</label>
+          <input type="time" name="deadline_time" value="{{ original.deadline_time|time:'H:i' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+
+      <button type="submit" class="btn">Create duplicate</button>
+      <a href="/milestones/{{ original.pk }}/" class="btn" style="background:var(--muted);">Cancel</a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

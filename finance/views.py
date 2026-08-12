@@ -4,7 +4,53 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from tenants.utils import get_user_tenant, can_view_financials
+from delivery.models import Milestone
 from .models import Invoice, InvoiceFollowUp
+
+
+@login_required
+def invoice_create(request, milestone_pk):
+    tenant = get_user_tenant(request)
+    milestone = get_object_or_404(Milestone.objects.select_related("project"), pk=milestone_pk, tenant=tenant)
+    project = milestone.project
+
+    can_create = can_view_financials(request.user) or request.user.id in (
+        project.project_manager_id, project.director_id
+    )
+    if not can_create:
+        messages.error(request, "You don't have permission to create invoices for this project.")
+        return redirect("milestone_detail", pk=milestone.pk)
+
+    if request.method == "POST":
+        amount = request.POST.get("amount_excl_tax", "").strip()
+        try:
+            amount_val = float(amount)
+        except ValueError:
+            messages.error(request, "Enter a valid amount.")
+            return redirect("invoice_create", milestone_pk=milestone.pk)
+
+        number = f"{project.project_number}-INV{project.invoices.count() + 1}"
+        while Invoice.objects.filter(invoice_number=number).exists():
+            number += "X"
+
+        invoice = Invoice.objects.create(
+            tenant=tenant, invoice_number=number, project=project,
+            organisation=project.client_organisation, milestone=milestone,
+            amount_excl_tax=amount_val, tax=0, total=amount_val,
+            due_date=request.POST.get("due_date") or None,
+            notes=request.POST.get("notes", "").strip(),
+        )
+        messages.success(request, f"Invoice {invoice.invoice_number} created as a draft.")
+        return redirect("invoice_detail", pk=invoice.pk)
+
+    suggested_amount = milestone.still_to_invoice or milestone.stage_value or 0
+    return render(request, "finance/invoice_create.html", {
+        "active_nav": "invoices",
+        "user_tenant": tenant,
+        "milestone": milestone,
+        "project": project,
+        "suggested_amount": suggested_amount,
+    })
 
 
 @login_required

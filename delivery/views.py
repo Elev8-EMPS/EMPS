@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -317,6 +318,9 @@ def project_detail(request, pk):
             project.project_manager_id, project.director_id
         ),
         "payment_schedule": project.milestones.filter(invoice_required=True).order_by("deadline") if tab == "finance" else None,
+        "responsible_teams": Team.objects.filter(
+            tenant=tenant, modalities__in=project.modalities.all()
+        ).distinct().prefetch_related("modalities", "members") if tab == "teams" else None,
         "open_todos": project.tasks.exclude(status__in=["completed", "cancelled"]).order_by("due_date")
         if tab == "overview" else None,
         "communications": project.communications.order_by("-occurred_at") if tab == "communications" else None,
@@ -397,6 +401,91 @@ def milestone_create(request):
 
 
 @login_required
+def milestone_edit(request, pk):
+    tenant = get_user_tenant(request)
+    milestone = get_object_or_404(Milestone.objects.select_related("project"), pk=pk, tenant=tenant)
+    today = timezone.localtime(timezone.now()).date()
+    is_past = milestone.deadline < today
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if is_past:
+            messages.error(request, "This deadline is in the past and can't be edited or deleted - duplicate it to a new date instead.")
+            return redirect("milestone_detail", pk=milestone.pk)
+
+        if action == "delete":
+            project_pk = milestone.project_id
+            milestone.delete()
+            messages.success(request, "Deadline deleted.")
+            return redirect("project_detail", pk=project_pk)
+
+        milestone.milestone_type = request.POST.get("milestone_type", "").strip()
+        milestone.deadline = request.POST.get("deadline") or milestone.deadline
+        milestone.deadline_time = request.POST.get("deadline_time") or None
+        milestone.notes = request.POST.get("notes", "").strip()
+        milestone.invoice_required = request.POST.get("invoice_required") == "on"
+
+        category_id = request.POST.get("category")
+        milestone.category_id = category_id or None
+        responsible_id = request.POST.get("responsible_user")
+        milestone.responsible_user_id = responsible_id or None
+
+        payment_percentage = request.POST.get("payment_percentage", "").strip()
+        if milestone.invoice_required and payment_percentage:
+            try:
+                milestone.payment_percentage = float(payment_percentage)
+            except ValueError:
+                pass
+        elif not milestone.invoice_required:
+            milestone.payment_percentage = None
+
+        if milestone.milestone_type and milestone.deadline:
+            milestone.save()
+            messages.success(request, "Deadline updated.")
+            return redirect("milestone_detail", pk=milestone.pk)
+
+    categories = DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tenant else DeadlineCategory.objects.none()
+    users = User.objects.filter(profile__tenant=tenant).order_by("username") if tenant else User.objects.none()
+
+    return render(request, "delivery/milestone_edit.html", {
+        "active_nav": "milestones",
+        "user_tenant": tenant,
+        "milestone": milestone,
+        "is_past": is_past,
+        "categories": categories,
+        "users": users,
+    })
+
+
+@login_required
+def milestone_duplicate(request, pk):
+    tenant = get_user_tenant(request)
+    original = get_object_or_404(Milestone.objects.select_related("project"), pk=pk, tenant=tenant)
+
+    if request.method == "POST":
+        new_deadline = request.POST.get("deadline")
+        if new_deadline:
+            copy = Milestone.objects.create(
+                tenant=tenant, project=original.project, created_by=request.user,
+                milestone_type=request.POST.get("milestone_type", original.milestone_type).strip() or original.milestone_type,
+                category=original.category, deadline=new_deadline,
+                deadline_time=request.POST.get("deadline_time") or None,
+                responsible_user=original.responsible_user,
+                invoice_required=original.invoice_required,
+                payment_percentage=original.payment_percentage,
+                notes=original.notes,
+            )
+            messages.success(request, "Deadline duplicated to the new date.")
+            return redirect("milestone_detail", pk=copy.pk)
+
+    return render(request, "delivery/milestone_duplicate.html", {
+        "active_nav": "milestones",
+        "user_tenant": tenant,
+        "original": original,
+    })
+
+
+@login_required
 def milestone_list(request):
     tenant = get_user_tenant(request)
     milestones = Milestone.objects.filter(tenant=tenant) if tenant else Milestone.objects.none()
@@ -433,6 +522,7 @@ def milestone_detail(request, pk):
         "active_nav": "milestones",
         "user_tenant": tenant,
         "milestone": milestone,
+        "is_past": milestone.deadline < timezone.localtime(timezone.now()).date(),
         "invoices": milestone.invoices.all(),
         "can_view_project_financials": can_view_financials(request.user) or request.user.id in (
             milestone.project.project_manager_id, milestone.project.director_id

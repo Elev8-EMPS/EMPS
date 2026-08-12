@@ -153,6 +153,10 @@ class DeadlineCategory(models.Model):
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="deadline_categories")
     name = models.CharField(max_length=100)
+    color = models.CharField(
+        max_length=7, default="#dc2626",
+        help_text="Hex colour used to badge this category's deadlines on the Calendar (e.g. #dc2626).",
+    )
 
     def __str__(self):
         return self.name

@@ -21,6 +21,7 @@
   <a href="?tab=communications" class="{% if tab == 'communications' %}active{% endif %}">Communications ({{ project.communications.count }})</a>
   <a href="?tab=checklist" class="{% if tab == 'checklist' %}active{% endif %}">Checklist ({{ project.checklist_items.count }})</a>
   <a href="?tab=people" class="{% if tab == 'people' %}active{% endif %}">People ({{ project.stakeholders.count }})</a>
+  <a href="?tab=teams" class="{% if tab == 'teams' %}active{% endif %}">Responsible teams</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -86,7 +87,7 @@
   <h2>Payment schedule <span style="font-weight:400; color:var(--muted); font-size:13px;">- total fee ${{ project.original_proposal.fee_amount }}</span></h2>
   {% if payment_schedule %}
   <table class="list">
-    <tr><th>Stage</th><th>Deadline</th><th>%</th><th>Stage value</th><th>Invoiced</th><th>Still to invoice</th></tr>
+    <tr><th>Stage</th><th>Deadline</th><th>%</th><th>Stage value</th><th>Invoiced</th><th>Still to invoice</th><th></th></tr>
     {% for m in payment_schedule %}
     <tr>
       <td><a href="/milestones/{{ m.pk }}/">{{ m.milestone_type }}</a></td>
@@ -99,6 +100,7 @@
         <span class="tag {% if m.still_to_invoice > 0 %}warn{% else %}ok{% endif %}">${{ m.still_to_invoice }}</span>
         {% else %}—{% endif %}
       </td>
+      <td>{% if m.still_to_invoice > 0 %}<a href="/milestones/{{ m.pk }}/invoice/new/" class="btn" style="background:var(--ok); padding:5px 10px; font-size:12.5px;">+ Invoice</a>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
@@ -345,6 +347,36 @@ function toggleStakeholderExternalFields(select) {
   });
 }
 </script>
+
+{% elif tab == 'teams' %}
+<div class="section">
+  <h2>Responsible teams</h2>
+  <div style="padding:18px;">
+    <p style="font-size:13.5px; color:var(--muted); margin-top:0;">
+      Teams whose discipline matches this project's modalities - they automatically see this
+      project's deadlines on their Calendar and get reminders for them.
+    </p>
+    {% if project.modalities.all %}
+    <div class="field-row"><div class="k">Project modalities</div><div>{% for mo in project.modalities.all %}<span class="tag">{{ mo.name }}</span> {% endfor %}</div></div>
+    {% else %}
+    <div class="empty">This project has no modalities set - add some on the Overview tab so teams can be matched.</div>
+    {% endif %}
+  </div>
+</div>
+{% if responsible_teams %}
+<table class="list">
+  <tr><th>Team</th><th>Matching modalities</th><th>Members</th></tr>
+  {% for t in responsible_teams %}
+  <tr>
+    <td>{{ t.name }}</td>
+    <td>{% for mo in t.modalities.all %}{% if mo in project.modalities.all %}<span class="tag ok">{{ mo.name }}</span> {% endif %}{% endfor %}</td>
+    <td>{% for u in t.members.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% elif project.modalities.all %}
+<div class="section"><div class="empty">No teams currently cover this project's modalities.</div></div>
+{% endif %}
 
 {% endif %}
 

@@ -30,7 +30,7 @@ def command_centre(request):
         profile = getattr(request.user, "profile", None)
         tenant = profile.tenant if profile else None
 
-    today = datetime.date.today()
+    today = timezone.localtime(timezone.now()).date()
     soon = today + datetime.timedelta(days=7)
 
     if tenant is None:

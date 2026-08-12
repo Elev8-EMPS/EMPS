@@ -73,7 +73,7 @@ def calendar_view(request):
     if tenant is None:
         return render(request, "leave/calendar.html", {"no_tenant": True})
 
-    today = datetime.date.today()
+    today = timezone.localtime(timezone.now()).date()
     year = int(request.GET.get("year", today.year))
     month = int(request.GET.get("month", today.month))
     first_of_month = datetime.date(year, month, 1)
@@ -108,14 +108,25 @@ def calendar_view(request):
         tenant=tenant
     ).filter(Q(user=request.user) | Q(user__in=visible_users)).distinct().select_related("user")
 
+    # A deadline is relevant to someone if they're the responsible
+    # person, this project's manager/director, a Director/Company
+    # Admin (sees everything), or on a team whose discipline matches
+    # the project's modalities - same relevance rule used for the
+    # in-app popup reminders, so what you see here matches what you
+    # get reminded about.
     my_teams = request.user.teams.filter(tenant=tenant)
     my_team_modality_ids = list(my_teams.values_list("modalities__id", flat=True).distinct())
-    deadlines_qs = Milestone.objects.none()
-    if my_team_modality_ids:
-        deadlines_qs = Milestone.objects.filter(
-            tenant=tenant, deadline__gte=first_of_month, deadline__lte=last_of_month,
-            project__modalities__id__in=my_team_modality_ids,
-        ).distinct().select_related("project").order_by("deadline")
+    deadlines_base = Milestone.objects.filter(
+        tenant=tenant, deadline__gte=first_of_month, deadline__lte=last_of_month,
+    ).select_related("project")
+    if can_view_confidential(request.user):
+        deadlines_qs = deadlines_base
+    else:
+        relevance = Q(responsible_user=request.user) | Q(project__project_manager=request.user) | Q(project__director=request.user)
+        if my_team_modality_ids:
+            relevance |= Q(project__modalities__id__in=my_team_modality_ids)
+        deadlines_qs = deadlines_base.filter(relevance).distinct()
+    deadlines_qs = deadlines_qs.order_by("deadline")
 
     # Build the month grid: a list of weeks, each a list of 7 days
     # (None for padding outside the month), each day carrying the

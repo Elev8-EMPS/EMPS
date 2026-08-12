@@ -46,7 +46,9 @@
           <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag" style="display:block; background:#dbeafe; border-color:#93c5fd;">{{ w.display_name }} WFH{% if w.leave_type == 'wfh_swap' %} (swap){% endif %}</span></div>
           {% endfor %}
           {% for m in day.deadlines %}
-          <div style="font-size:10.5px; margin-bottom:2px;"><span class="tag danger" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.project.project_number }} due</span></div>
+          <div style="font-size:10.5px; margin-bottom:2px;" title="{{ m.milestone_type }} ({{ m.project.project_number }}){% if m.deadline_time %} at {{ m.deadline_time|time:'H:i' }}{% endif %}">
+            <a href="/milestones/{{ m.pk }}/" style="text-decoration:none; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border-radius:4px; color:#fff; background:{{ m.category.color|default:'#dc2626' }};">{{ m.project.project_number }} - {{ m.milestone_type }}</a>
+          </div>
           {% endfor %}
           {% endif %}
         </td>

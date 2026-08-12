@@ -8,7 +8,13 @@
   <div class="meta">
     <a href="/projects/{{ milestone.project.pk }}/">{{ milestone.project.project_number }} - {{ milestone.project.name }}</a>
     &middot; <span class="tag {% if milestone.status == 'overdue' or milestone.status == 'at_risk' %}danger{% elif milestone.status == 'issued' or milestone.status == 'paid' %}ok{% endif %}">{{ milestone.get_status_display }}</span>
-    &middot; <a href="/admin/delivery/milestone/{{ milestone.pk }}/change/">Edit in Admin</a>
+    {% if is_past %}
+    &middot; <a href="/milestones/{{ milestone.pk }}/duplicate/">Duplicate to a new date</a>
+    &middot; <span class="tag warn">Past - locked</span>
+    {% else %}
+    &middot; <a href="/milestones/{{ milestone.pk }}/edit/">Edit</a>
+    &middot; <a href="/milestones/{{ milestone.pk }}/duplicate/">Duplicate</a>
+    {% endif %}
   </div>
 </div>
 
@@ -36,6 +42,9 @@
     <div class="field-row"><div class="k">Stage value</div><div>{% if milestone.stage_value %}${{ milestone.stage_value }}{% else %}— (set the project's fee on its proposal first){% endif %}</div></div>
     <div class="field-row"><div class="k">Invoiced so far</div><div>${{ milestone.invoiced_for_stage }}</div></div>
     <div class="field-row"><div class="k">Still to invoice</div><div>{% if milestone.still_to_invoice %}<span class="tag {% if milestone.still_to_invoice > 0 %}warn{% else %}ok{% endif %}">${{ milestone.still_to_invoice }}</span>{% else %}—{% endif %}</div></div>
+    {% if milestone.still_to_invoice > 0 %}
+    <a href="/milestones/{{ milestone.pk }}/invoice/new/" class="btn" style="margin-top:6px; background:var(--ok);">+ Create invoice for this stage</a>
+    {% endif %}
   </div>
 </div>
 {% endif %}
