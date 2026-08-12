@@ -11,6 +11,20 @@ from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant, 
 from .utils import get_user_tenant, can_view_confidential
 from leave.models import WFHDay, WEEKDAY_CHOICES
 
+# A palette of visually distinct colours - new deadline categories cycle
+# through these by default so each one looks different on the Calendar
+# without anyone having to remember to change the colour picker.
+DEADLINE_COLOR_PALETTE = [
+    "#dc2626",  # red
+    "#2563eb",  # blue
+    "#059669",  # green
+    "#d97706",  # amber
+    "#7c3aed",  # violet
+    "#0891b2",  # cyan
+    "#db2777",  # pink
+    "#65a30d",  # lime
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,6 +103,9 @@ def manage_hub(request):
         "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
         "deadline_categories": DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tab == "deadline_categories" else None,
+        "next_category_color": DEADLINE_COLOR_PALETTE[
+            DeadlineCategory.objects.filter(tenant=tenant).count() % len(DEADLINE_COLOR_PALETTE)
+        ] if tab == "deadline_categories" and tenant else None,
         "visibility_choices": Tenant.DASHBOARD_VISIBILITY_CHOICES if tab == "settings" else None,
         "name_display_choices": Tenant.NAME_DISPLAY_CHOICES if tab == "settings" else None,
     })

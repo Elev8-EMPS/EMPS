@@ -61,7 +61,7 @@
       {% csrf_token %}
       <input type="hidden" name="deadline_category_action" value="create">
       <input type="text" name="name" placeholder="e.g. Client Review" required style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-      <input type="color" name="color" value="#dc2626" style="width:48px; height:42px; padding:2px; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
+      <input type="color" name="color" value="{{ next_category_color }}" style="width:48px; height:42px; padding:2px; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
       <button type="submit" class="btn">Add</button>
     </form>
   </div>
