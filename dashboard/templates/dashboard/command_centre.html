@@ -17,14 +17,18 @@
   {% endif %}
 
   <div class="kpis">
-    <div class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></div>
-    {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>{% endif %}
-    <div class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></div>
-    {% if can_view_financials %}<div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>{% endif %}
-    {% if can_view_financials %}<div class="kpi"><div class="num">${{ invoiced_this_month|floatformat:0 }}</div><div class="label">Invoiced this month</div></div>{% endif %}
-    <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
-    {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>{% endif %}
-    <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
+    <a href="/projects/?status=active" class="kpi"><div class="num">{{ active_projects_count }}</div><div class="label">Active projects</div></a>
+    {% if proposals_visibility == 'full' %}<a href="/proposals/?status=draft,internal_review,director_review,approved,issued,follow_up_due,revised" class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></a>{% endif %}
+    <a href="/milestones/?status=at_risk,overdue" class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></a>
+    <a href="/milestones/?due=today" class="kpi"><div class="num">{{ deadlines_today_count }}</div><div class="label">Deadlines due today</div></a>
+    <a href="/milestones/?due=overdue" class="kpi"><div class="num">{{ overdue_milestones_count }}</div><div class="label">Overdue milestones</div></a>
+    {% if can_view_financials %}<a href="/invoices/?status=awaiting_approval,approved,issued,part_paid,overdue,disputed" class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></a>{% endif %}
+    {% if can_view_financials %}<a href="/invoices/?month=this" class="kpi"><div class="num">${{ invoiced_this_month|floatformat:0 }}</div><div class="label">Invoiced this month</div></a>{% endif %}
+    <a href="/milestones/?status=approved_to_invoice" class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></a>
+    {% if proposals_visibility == 'full' %}<a href="/proposals/?followup=due" class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></a>{% endif %}
+    {% if proposals_visibility == 'full' %}<a href="/proposals/?followup=scheduled" class="kpi"><div class="num">{{ proposal_followups_due_count }}</div><div class="label">Scheduled follow-ups</div></a>{% endif %}
+    {% if can_view_financials %}<a href="/invoices/?followup=scheduled" class="kpi"><div class="num">{{ invoice_followups_due_count }}</div><div class="label">Invoice follow-ups</div></a>{% endif %}
+    <a href="/tasks/?scope=mine" class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></a>
   </div>
 
   {% if my_team_projects %}

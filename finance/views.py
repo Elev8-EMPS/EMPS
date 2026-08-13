@@ -79,7 +79,16 @@ def invoice_list(request):
 
     status = request.GET.get("status", "").strip()
     if status:
-        invoices = invoices.filter(status=status)
+        invoices = invoices.filter(status__in=status.split(","))
+
+    today = timezone.localtime(timezone.now()).date()
+    month = request.GET.get("month", "").strip()
+    if month == "this":
+        invoices = invoices.filter(invoice_date__year=today.year, invoice_date__month=today.month)
+
+    followup = request.GET.get("followup", "").strip()
+    if followup == "scheduled":
+        invoices = invoices.filter(follow_ups__status="scheduled", follow_ups__due_date__lte=today).distinct()
 
     invoices = invoices.select_related("organisation", "project").order_by("-due_date", "invoice_number")
 

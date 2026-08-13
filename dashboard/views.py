@@ -174,6 +174,10 @@ def command_centre(request):
         "follow_ups_due_count": proposals.filter(follow_up_date__lte=today).filter(
             status__in=open_proposal_statuses
         ).count() if full_proposal_access else None,
+        "deadlines_today_count": milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"]).count(),
+        "overdue_milestones_count": milestones.filter(deadline__lt=today).exclude(status__in=["issued", "closed", "paid"]).count(),
+        "proposal_followups_due_count": proposal_followups_due.count() if full_proposal_access else None,
+        "invoice_followups_due_count": invoice_followups_due.count(),
         "my_open_todos_count": get_open_todo_count(request.user),
         # Today's Focus
         "deadlines_today": milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"]),

@@ -85,7 +85,16 @@ def proposal_list(request):
 
     status = request.GET.get("status", "").strip()
     if status:
-        proposals = proposals.filter(status=status)
+        proposals = proposals.filter(status__in=status.split(","))
+
+    today = timezone.localtime(timezone.now()).date()
+    followup = request.GET.get("followup", "").strip()
+    if followup == "due":
+        proposals = proposals.filter(follow_up_date__lte=today).filter(status__in=[
+            "draft", "internal_review", "director_review", "approved", "issued", "follow_up_due", "revised"
+        ])
+    elif followup == "scheduled":
+        proposals = proposals.filter(follow_ups__status="scheduled", follow_ups__due_date__lte=today).distinct()
 
     proposals = proposals.select_related("organisation").order_by("-issue_date", "proposal_number")
 

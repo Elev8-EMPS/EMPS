@@ -183,7 +183,7 @@ def project_list(request):
 
     status = request.GET.get("status", "").strip()
     if status:
-        projects = projects.filter(status=status)
+        projects = projects.filter(status__in=status.split(","))
 
     projects = projects.select_related("client_organisation").order_by("-start_date", "project_number")
 
@@ -512,11 +512,18 @@ def milestone_duplicate(request, pk):
 @login_required
 def milestone_list(request):
     tenant = get_user_tenant(request)
+    today = timezone.localtime(timezone.now()).date()
     milestones = Milestone.objects.filter(tenant=tenant) if tenant else Milestone.objects.none()
 
     status = request.GET.get("status", "").strip()
     if status:
-        milestones = milestones.filter(status=status)
+        milestones = milestones.filter(status__in=status.split(","))
+
+    due = request.GET.get("due", "").strip()
+    if due == "today":
+        milestones = milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"])
+    elif due == "overdue":
+        milestones = milestones.filter(deadline__lt=today).exclude(status__in=["issued", "closed", "paid"])
 
     q = request.GET.get("q", "").strip()
     if q:
