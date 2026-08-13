@@ -41,6 +41,7 @@ def invoice_create(request, milestone_pk):
             tenant=tenant, invoice_number=number, project=project,
             organisation=project.client_organisation, milestone=milestone,
             amount_excl_tax=amount_val, tax=tax_val, total=total_val,
+            invoice_date=timezone.localtime(timezone.now()).date(),
             due_date=request.POST.get("due_date") or None,
             notes=request.POST.get("notes", "").strip(),
         )

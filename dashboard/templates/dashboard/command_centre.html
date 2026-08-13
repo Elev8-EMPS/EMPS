@@ -21,6 +21,7 @@
     {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ open_proposals_count }}</div><div class="label">Open proposals</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ milestones_at_risk_count }}</div><div class="label">Milestones at risk</div></div>
     {% if can_view_financials %}<div class="kpi"><div class="num">${{ outstanding_debt|floatformat:0 }}</div><div class="label">Outstanding debt</div></div>{% endif %}
+    {% if can_view_financials %}<div class="kpi"><div class="num">${{ invoiced_this_month|floatformat:0 }}</div><div class="label">Invoiced this month</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ ready_to_invoice_count }}</div><div class="label">Ready to invoice</div></div>
     {% if proposals_visibility == 'full' %}<div class="kpi"><div class="num">{{ follow_ups_due_count }}</div><div class="label">Follow-ups due</div></div>{% endif %}
     <div class="kpi"><div class="num">{{ my_open_todos_count }}</div><div class="label">My open to-dos</div></div>
@@ -43,15 +44,15 @@
     <div style="padding:14px 18px;">
       <div style="margin-bottom:{% if wfh_today or wfh_swap_today %}14px{% else %}0{% endif %};">
         <p style="font-size:12px; text-transform:uppercase; letter-spacing:0.03em; color:var(--muted); margin:0 0 8px;">Not in the office</p>
-        {% for lr in out_today %}<span class="tag danger" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ lr.display_name }} - {{ lr.get_leave_type_display }}</span>{% endfor %}
-        {% for t in site_visit_today %}<span class="tag warn" style="margin-right:6px; margin-bottom:6px; display:inline-block;">{{ t.owner_display_name }} - Site visit</span>{% endfor %}
+        {% for lr in out_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; color:#fff; background:{{ lr.badge_color }}; border-color:{{ lr.badge_color }};">{{ lr.display_name }} - {{ lr.get_leave_type_display }}</span>{% endfor %}
+        {% for t in site_visit_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; color:#fff; background:{{ t.badge_color }}; border-color:{{ t.badge_color }};">{{ t.owner_display_name }} - Site visit</span>{% endfor %}
         {% if not out_today and not site_visit_today %}<span style="color:var(--muted); font-size:13.5px;">No one's out today.</span>{% endif %}
       </div>
       {% if wfh_today or wfh_swap_today %}
       <div>
         <p style="font-size:12px; text-transform:uppercase; letter-spacing:0.03em; color:var(--muted); margin:0 0 8px;">Working from home</p>
-        {% for w in wfh_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; background:#dbeafe; border-color:#93c5fd;">{{ w.display_name }}</span>{% endfor %}
-        {% for s in wfh_swap_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; background:#dbeafe; border-color:#93c5fd;">{{ s.display_name }} (swapped)</span>{% endfor %}
+        {% for w in wfh_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; background:#dbeafe; border-color:#93c5fd; color:#1e3a8a;">{{ w.display_name }}</span>{% endfor %}
+        {% for s in wfh_swap_today %}<span class="tag" style="margin-right:6px; margin-bottom:6px; display:inline-block; background:#dbeafe; border-color:#93c5fd; color:#1e3a8a;">{{ s.display_name }} (swapped)</span>{% endfor %}
       </div>
       {% endif %}
     </div>

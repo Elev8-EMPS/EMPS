@@ -5,7 +5,7 @@ from django.db.models import Sum, Q
 from django.shortcuts import render
 from django.utils import timezone
 
-from tenants.models import Tenant
+from tenants.models import Tenant, DeadlineCategory
 from tenants.utils import get_open_todo_count, can_view_proposals, get_dashboard_visibility, get_display_names
 from crm.models import Proposal, Enquiry
 from delivery.models import Milestone, Task, Project
@@ -101,6 +101,29 @@ def command_centre(request):
     for _t in site_visit_today:
         _t.owner_display_name = _display_names.get(_t.owner_id, _t.owner.first_name or _t.owner.username)
 
+    # Colour-code the "not in the office" tags: WFH matches the light
+    # blue used on the Calendar, leave types get their own colour, and
+    # Site Visit borrows whatever colour is set on a "Site Visit"
+    # deadline category if one exists, so it stays consistent with
+    # how the Calendar colour-codes categories.
+    LEAVE_TYPE_COLORS = {
+        "annual": "#ca8a04",   # gold
+        "sick": "#e11d48",     # rose
+        "other": "#6b7280",    # grey
+    }
+    WFH_COLOR = "#2563eb"
+    site_visit_category = DeadlineCategory.objects.filter(tenant=tenant, name__iexact="Site Visit").first()
+    SITE_VISIT_COLOR = site_visit_category.color if site_visit_category else "#d97706"
+
+    for _lr in out_today:
+        _lr.badge_color = LEAVE_TYPE_COLORS.get(_lr.leave_type, "#6b7280")
+    for _w in wfh_today:
+        _w.badge_color = WFH_COLOR
+    for _s in wfh_swap_today:
+        _s.badge_color = WFH_COLOR
+    for _t in site_visit_today:
+        _t.badge_color = SITE_VISIT_COLOR
+
     # Fee Proposals are opt-in visible (see tenants.utils.can_view_proposals).
     # People without access see nothing proposal-related by default, or -
     # if this tenant has turned on 'responsible_for' mode - a filtered view
@@ -145,6 +168,9 @@ def command_centre(request):
             start=0,
         ),
         "ready_to_invoice_count": milestones.filter(status="approved_to_invoice").count(),
+        "invoiced_this_month": invoices.filter(
+            invoice_date__year=today.year, invoice_date__month=today.month
+        ).aggregate(total=Sum("total"))["total"] or 0,
         "follow_ups_due_count": proposals.filter(follow_up_date__lte=today).filter(
             status__in=open_proposal_statuses
         ).count() if full_proposal_access else None,
