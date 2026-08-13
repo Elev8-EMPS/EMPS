@@ -420,6 +420,19 @@ def milestone_edit(request, pk):
 
     if request.method == "POST":
         action = request.POST.get("action")
+
+        if action == "set_status":
+            # Allowed even for past deadlines - marking something done
+            # (or reopening it) is exactly what you'd want to do once
+            # its date has passed, unlike changing its title/date/etc.
+            new_status = request.POST.get("status", "")
+            valid_statuses = {v for v, _ in Milestone.STATUS_CHOICES}
+            if new_status in valid_statuses:
+                milestone.status = new_status
+                milestone.save()
+                messages.success(request, f"Marked as {milestone.get_status_display()}.")
+            return redirect("milestone_detail", pk=milestone.pk)
+
         if is_past:
             messages.error(request, "This deadline is in the past and can't be edited or deleted - duplicate it to a new date instead.")
             return redirect("milestone_detail", pk=milestone.pk)

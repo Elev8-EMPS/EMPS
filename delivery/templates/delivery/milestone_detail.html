@@ -19,6 +19,35 @@
 </div>
 
 <div class="section">
+  <div style="padding:16px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+    {% if milestone.status != 'closed' %}
+    <form method="post" action="/milestones/{{ milestone.pk }}/edit/" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="set_status">
+      <input type="hidden" name="status" value="closed">
+      <button type="submit" class="btn" style="background:var(--ok);">Mark as complete</button>
+    </form>
+    {% else %}
+    <form method="post" action="/milestones/{{ milestone.pk }}/edit/" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="set_status">
+      <input type="hidden" name="status" value="scheduled">
+      <button type="submit" class="btn" style="background:var(--muted);">Reopen</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/milestones/{{ milestone.pk }}/edit/" style="display:flex; align-items:center; gap:8px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="set_status">
+      <label style="font-size:13px; color:var(--muted);">Or set status to:</label>
+      <select name="status" style="padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:13.5px;">
+        {% for value, label in milestone.STATUS_CHOICES %}<option value="{{ value }}" {% if milestone.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn" style="padding:6px 12px; font-size:13px;">Save</button>
+    </form>
+  </div>
+</div>
+
+<div class="section">
   <h2>Details</h2>
   <div style="padding:18px;">
     <div class="field-row"><div class="k">Deadline</div><div>{{ milestone.deadline }}{% if milestone.deadline_time %} at {{ milestone.deadline_time|time:"H:i" }}{% endif %}</div></div>
