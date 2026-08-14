@@ -49,6 +49,15 @@ def command_centre(request):
     invoice_followups_due = InvoiceFollowUp.objects.filter(
         tenant=tenant, status="scheduled", due_date__lte=today
     ).select_related("invoice", "invoice__organisation")
+    # Separate from the above (which is "needs action now/overdue", used
+    # in Today's Focus) - these are follow-ups still ahead of us, for
+    # the "Scheduled follow-ups" / "Invoice follow-ups" KPI cards.
+    proposal_followups_scheduled = ProposalFollowUp.objects.filter(
+        tenant=tenant, status="scheduled", due_date__gte=today
+    )
+    invoice_followups_scheduled = InvoiceFollowUp.objects.filter(
+        tenant=tenant, status="scheduled", due_date__gte=today
+    )
 
     # This person's team(s) and the disciplines those teams cover -
     # used to show "projects relevant to my team" below.
@@ -176,8 +185,8 @@ def command_centre(request):
         ).count() if full_proposal_access else None,
         "deadlines_today_count": milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"]).count(),
         "overdue_milestones_count": milestones.filter(deadline__lt=today).exclude(status__in=["issued", "closed", "paid"]).count(),
-        "proposal_followups_due_count": proposal_followups_due.count() if full_proposal_access else None,
-        "invoice_followups_due_count": invoice_followups_due.count(),
+        "proposal_followups_due_count": proposal_followups_scheduled.count() if full_proposal_access else None,
+        "invoice_followups_due_count": invoice_followups_scheduled.count(),
         "my_open_todos_count": get_open_todo_count(request.user),
         # Today's Focus
         "deadlines_today": milestones.filter(deadline=today).exclude(status__in=["issued", "closed", "paid"]),

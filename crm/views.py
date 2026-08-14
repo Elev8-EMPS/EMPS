@@ -94,7 +94,7 @@ def proposal_list(request):
             "draft", "internal_review", "director_review", "approved", "issued", "follow_up_due", "revised"
         ])
     elif followup == "scheduled":
-        proposals = proposals.filter(follow_ups__status="scheduled", follow_ups__due_date__lte=today).distinct()
+        proposals = proposals.filter(follow_ups__status="scheduled", follow_ups__due_date__gte=today).distinct()
 
     proposals = proposals.select_related("organisation").order_by("-issue_date", "proposal_number")
 

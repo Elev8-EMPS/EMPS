@@ -41,11 +41,12 @@ def invoice_create(request, milestone_pk):
             tenant=tenant, invoice_number=number, project=project,
             organisation=project.client_organisation, milestone=milestone,
             amount_excl_tax=amount_val, tax=tax_val, total=total_val,
+            status="issued",
             invoice_date=timezone.localtime(timezone.now()).date(),
             due_date=request.POST.get("due_date") or None,
             notes=request.POST.get("notes", "").strip(),
         )
-        messages.success(request, f"Invoice {invoice.invoice_number} created as a draft.")
+        messages.success(request, f"Invoice {invoice.invoice_number} created and marked as issued.")
         return redirect("invoice_detail", pk=invoice.pk)
 
     suggested_amount = milestone.still_to_invoice or milestone.stage_value or 0
@@ -88,7 +89,7 @@ def invoice_list(request):
 
     followup = request.GET.get("followup", "").strip()
     if followup == "scheduled":
-        invoices = invoices.filter(follow_ups__status="scheduled", follow_ups__due_date__lte=today).distinct()
+        invoices = invoices.filter(follow_ups__status="scheduled", follow_ups__due_date__gte=today).distinct()
 
     invoices = invoices.select_related("organisation", "project").order_by("-due_date", "invoice_number")
 
