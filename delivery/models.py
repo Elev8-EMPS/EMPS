@@ -124,7 +124,7 @@ class Milestone(TenantModel):
     @property
     def invoiced_for_stage(self):
         from django.db.models import Sum
-        return self.invoices.aggregate(total=Sum("total"))["total"] or 0
+           return self.invoices.exclude(status__in=["draft", "cancelled"]).aggregate(total=Sum("total"))["total"] or 0
 
     @property
     def still_to_invoice(self):
