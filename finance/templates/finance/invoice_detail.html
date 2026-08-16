@@ -11,6 +11,14 @@
     &middot; <span class="tag {% if invoice.status == 'paid' %}ok{% elif invoice.status == 'overdue' or invoice.status == 'disputed' %}danger{% elif invoice.status == 'part_paid' %}warn{% endif %}">{{ invoice.get_status_display }}</span>
     &middot; <a href="/admin/finance/invoice/{{ invoice.pk }}/change/">Edit in Admin</a>
   </div>
+  {% if invoice.status == 'draft' %}
+  <form method="post" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="mark_issued">
+    <button type="submit" class="btn" style="background:var(--ok);">Mark as Issued</button>
+    <span style="font-size:12.5px; color:var(--muted); margin-left:8px;">Still a draft — won't count toward outstanding debt until issued.</span>
+  </form>
+  {% endif %}
 </div>
 
 <div class="kpis">

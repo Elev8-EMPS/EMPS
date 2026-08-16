@@ -7,7 +7,7 @@
   <div style="padding:22px;">
     <p style="color:var(--muted); font-size:13.5px; margin-top:0;">
       For <strong>{{ milestone.milestone_type }}</strong> on {{ project.project_number }} - {{ project.name }}.
-      Created and marked as issued in EPMS, so it shows up in your outstanding debt straight away. If you use Xero or MYOB you'll still need to raise the matching invoice there too until that integration is connected.
+      This saves as a <strong>draft</strong> first — it won't count toward outstanding debt or trigger payment follow-ups until you review it and mark it Issued. If you use Xero or MYOB you'll still need to raise the matching invoice there too until that integration is connected.
     </p>
     <form method="post" id="invoice-form">
       {% csrf_token %}
