@@ -41,12 +41,11 @@ def invoice_create(request, milestone_pk):
             tenant=tenant, invoice_number=number, project=project,
             organisation=project.client_organisation, milestone=milestone,
             amount_excl_tax=amount_val, tax=tax_val, total=total_val,
-            status="issued",
-            invoice_date=timezone.localtime(timezone.now()).date(),
+            status="draft",
             due_date=request.POST.get("due_date") or None,
             notes=request.POST.get("notes", "").strip(),
         )
-        messages.success(request, f"Invoice {invoice.invoice_number} created and marked as issued.")
+        messages.success(request, f"Invoice {invoice.invoice_number} saved as a draft. Review it, then mark it Issued.")
         return redirect("invoice_detail", pk=invoice.pk)
 
     suggested_amount = milestone.still_to_invoice or milestone.stage_value or 0
@@ -118,6 +117,16 @@ def invoice_detail(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
 
+        if action == "mark_issued":
+            if invoice.status != "draft":
+                messages.error(request, "Only draft invoices can be marked Issued this way.")
+            else:
+                invoice.status = "issued"
+                invoice.invoice_date = invoice.invoice_date or timezone.localtime(timezone.now()).date()
+                invoice.save()
+                messages.success(request, f"Invoice {invoice.invoice_number} marked as Issued.")
+            return redirect("invoice_detail", pk=invoice.pk)
+
         if action == "action_followup":
             from crm.models import add_working_days
             followup_id = request.POST.get("followup_id")
@@ -151,4 +160,4 @@ def invoice_detail(request, pk):
         "invoice": invoice,
         "payments": invoice.payments.order_by("-payment_date"),
         "follow_ups": invoice.follow_ups.all(),
-    })
+        })
