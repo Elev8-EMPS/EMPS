@@ -36,7 +36,8 @@ class TaskAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 @admin.register(Document)
 class DocumentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
-    list_display = ("display_name", "related_project", "category", "document_type", "version", "uploaded_by", "uploaded_at", "tenant")
+    list_display = ("display_name", "related_project", "category", "document_type", "version", "confidentiality", "uploaded_by", "uploaded_at", "tenant")
+    list_editable = ("confidentiality",)
     list_filter = ("category", "document_type", "confidentiality", "tenant")
     search_fields = ("display_name", "original_filename")
     date_hierarchy = "uploaded_at"
