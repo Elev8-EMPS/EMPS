@@ -160,4 +160,4 @@ def invoice_detail(request, pk):
         "invoice": invoice,
         "payments": invoice.payments.order_by("-payment_date"),
         "follow_ups": invoice.follow_ups.all(),
-    })
+        })
