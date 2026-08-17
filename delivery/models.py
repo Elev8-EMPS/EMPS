@@ -223,7 +223,12 @@ class Document(TenantModel):
     uploaded_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     issued_date = models.DateField(null=True, blank=True)
-    confidentiality = models.CharField(max_length=50, blank=True)
+    CONFIDENTIALITY_CHOICES = [
+        ("", "Standard - visible to anyone with project access"),
+        ("fee_proposal", "Fee Proposal - Directors/Admin/Proposal access only"),
+        ("confidential", "Confidential - Directors/Admin only"),
+    ]
+    confidentiality = models.CharField(max_length=20, blank=True, choices=CONFIDENTIALITY_CHOICES)
     related_project = models.ForeignKey(
         Project, null=True, blank=True, on_delete=models.CASCADE, related_name="documents"
     )

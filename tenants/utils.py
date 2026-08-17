@@ -49,6 +49,32 @@ def can_view_fee_amounts(user):
     return can_view_financials(user) or can_view_proposals(user)
 
 
+def can_view_document(user, document):
+    """Whether `user` may see this Document, based on its confidentiality
+    level: 'confidential' documents (e.g. HR/company-confidential files)
+    are Director/Admin only, 'fee_proposal' documents follow the same
+    rule as Fee Proposals generally, and everything else (blank/standard)
+    is visible to anyone who already has access to the project."""
+    level = document.confidentiality
+    if level == "confidential":
+        return can_view_confidential(user)
+    if level == "fee_proposal":
+        return can_view_proposals(user)
+    return True
+
+
+def visible_document_filter(user):
+    """A Q object for filtering a Document queryset down to only the
+    documents `user` is allowed to see - the queryset-level equivalent
+    of can_view_document, for list views."""
+    q = models.Q(confidentiality="")
+    if can_view_confidential(user):
+        q |= models.Q(confidentiality="confidential")
+    if can_view_proposals(user):
+        q |= models.Q(confidentiality="fee_proposal")
+    return q
+
+
 def can_approve_leave(actor, target_user):
     """Who's allowed to approve/decline a leave or WFH request for
     `target_user`: their Line Manager specifically, or anyone with
