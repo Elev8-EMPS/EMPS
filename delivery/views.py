@@ -8,8 +8,13 @@ from django.utils import timezone
 import datetime
 
 from tenants.models import Team, Modality, ChecklistItemTemplate, DeadlineCategory
-from tenants.utils import get_user_tenant, has_company_wide_scope, can_view_financials, can_edit_financials, can_view_document, visible_document_filter, require_delete_reason
+from tenants.utils import get_user_tenant, has_company_wide_scope, can_view_financials, can_edit_financials, can_view_document, visible_document_filter, require_delete_reason, diff_and_log_update
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
+
+PROJECT_EDITABLE_FIELDS = [
+    "name", "address", "client_organisation_id", "billing_organisation_id", "primary_contact_id",
+    "project_manager_id", "director_id", "status", "start_date", "target_completion_date", "completion_date",
+]
 
 
 def _generate_checklist_items(project, tenant, modality_ids):
@@ -211,6 +216,38 @@ def project_detail(request, pk):
         pk=pk, tenant=tenant,
     )
 
+    if request.method == "POST" and request.POST.get("action") == "update_core":
+        can_edit_core = has_company_wide_scope(request.user) or request.user.id in (
+            project.project_manager_id, project.director_id
+        )
+        if not can_edit_core:
+            messages.error(request, "You don't have permission to edit this project's details.")
+            return redirect(f"/projects/{project.pk}/")
+
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            messages.error(request, "You must give a reason for this change.")
+            return redirect(f"/projects/{project.pk}/?tab=edit")
+
+        before = {f: getattr(project, f) for f in PROJECT_EDITABLE_FIELDS}
+
+        project.name = request.POST.get("name", project.name).strip()
+        project.address = request.POST.get("address", "").strip()
+        project.client_organisation_id = request.POST.get("client_organisation") or project.client_organisation_id
+        project.billing_organisation_id = request.POST.get("billing_organisation") or None
+        project.primary_contact_id = request.POST.get("primary_contact") or None
+        project.project_manager_id = request.POST.get("project_manager") or None
+        project.director_id = request.POST.get("director") or None
+        project.status = request.POST.get("status", project.status)
+        project.start_date = request.POST.get("start_date") or None
+        project.target_completion_date = request.POST.get("target_completion_date") or None
+        project.completion_date = request.POST.get("completion_date") or None
+        project.save()
+
+        changed = diff_and_log_update(request.user, tenant, project, before, reason)
+        messages.success(request, "Project updated." if changed else "No changes were made.")
+        return redirect(f"/projects/{project.pk}/")
+
     if request.method == "POST" and request.POST.get("action") == "add_modality":
         modality_id = request.POST.get("modality")
         if modality_id:
@@ -311,6 +348,17 @@ def project_detail(request, pk):
         from crm.models import Contact
         available_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name") if tenant else Contact.objects.none()
 
+    edit_organisations = edit_contacts = edit_users = None
+    can_edit_core = False
+    if tab == "edit":
+        can_edit_core = has_company_wide_scope(request.user) or request.user.id in (
+            project.project_manager_id, project.director_id
+        )
+        from crm.models import Organisation, Contact
+        edit_organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name")
+        edit_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name")
+        edit_users = User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username")
+
     return render(request, "delivery/project_detail.html", {
         "active_nav": "projects",
         "user_tenant": tenant,
@@ -341,6 +389,10 @@ def project_detail(request, pk):
         "available_modalities": Modality.objects.filter(tenant=tenant).exclude(
             id__in=project.modalities.values_list("id", flat=True)
         ) if tab == "checklist" else None,
+        "edit_organisations": edit_organisations,
+        "edit_contacts": edit_contacts,
+        "edit_users": edit_users,
+        "can_edit_core": can_edit_core,
     })
 
 

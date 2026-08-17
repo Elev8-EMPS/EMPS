@@ -8,7 +8,7 @@
   <div class="meta">
     {{ project.project_number }} &middot; {{ project.client_organisation.legal_name }}
     &middot; <span class="tag {% if project.status == 'at_risk' %}danger{% elif project.status == 'active' %}ok{% endif %}">{{ project.get_status_display }}</span>
-    &middot; <a href="/admin/delivery/project/{{ project.pk }}/change/">Edit in Admin</a>
+    &middot; <a href="?tab=edit">Edit</a>
   </div>
 </div>
 
@@ -22,6 +22,7 @@
   <a href="?tab=checklist" class="{% if tab == 'checklist' %}active{% endif %}">Checklist ({{ project.checklist_items.count }})</a>
   <a href="?tab=people" class="{% if tab == 'people' %}active{% endif %}">People ({{ project.stakeholders.count }})</a>
   <a href="?tab=teams" class="{% if tab == 'teams' %}active{% endif %}">Responsible teams</a>
+  <a href="?tab=edit" class="{% if tab == 'edit' %}active{% endif %}">Edit</a>
 </div>
 
 {% if tab == 'overview' %}
@@ -378,6 +379,94 @@ function toggleStakeholderExternalFields(select) {
 <div class="section"><div class="empty">No teams currently cover this project's modalities.</div></div>
 {% endif %}
 
+{% endif %}
+
+{% if tab == 'edit' %}
+{% if not can_edit_core %}
+<div class="section"><div class="empty">You don't have permission to edit this project's details - only the project's Manager, Director, or Company Admin can.</div></div>
+{% else %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_core">
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project name <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="name" value="{{ project.name }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Address</label>
+        <textarea name="address" rows="2" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ project.address }}</textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client organisation <span style="color:var(--danger);">*</span></label>
+          <select name="client_organisation" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            {% for o in edit_organisations %}<option value="{{ o.pk }}" {% if project.client_organisation_id == o.pk %}selected{% endif %}>{{ o.legal_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Billing organisation</label>
+          <select name="billing_organisation" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— Same as client —</option>
+            {% for o in edit_organisations %}<option value="{{ o.pk }}" {% if project.billing_organisation_id == o.pk %}selected{% endif %}>{{ o.legal_name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Primary contact</label>
+        <select name="primary_contact" style="width:100%; max-width:340px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— None —</option>
+          {% for c in edit_contacts %}<option value="{{ c.pk }}" {% if project.primary_contact_id == c.pk %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project manager</label>
+          <select name="project_manager" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for u in edit_users %}<option value="{{ u.pk }}" {% if project.project_manager_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Director</label>
+          <select name="director" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for u in edit_users %}<option value="{{ u.pk }}" {% if project.director_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Status</label>
+        <select name="status" style="width:100%; max-width:260px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          {% for value, label in project.STATUS_CHOICES %}<option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Start date</label>
+          <input type="date" name="start_date" value="{{ project.start_date|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Target completion</label>
+          <input type="date" name="target_completion_date" value="{{ project.target_completion_date|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Completion date</label>
+          <input type="date" name="completion_date" value="{{ project.completion_date|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:20px; padding:14px; background:#fef3c7; border-radius:8px;">
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Reason for this change <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="reason" required placeholder="e.g. Client pushed the completion date out two weeks" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <p style="font-size:12px; color:var(--muted); margin:6px 0 0;">Saved to the Audit Log with your name and the time, alongside whichever fields actually changed.</p>
+      </div>
+      <button type="submit" class="btn">Save changes</button>
+      <a href="?tab=overview" style="margin-left:10px;">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 {% endblock %}

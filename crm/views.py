@@ -4,8 +4,20 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.utils import get_user_tenant, can_view_proposals, get_dashboard_visibility
+from django.contrib.auth.models import User
+
+from tenants.utils import get_user_tenant, can_view_proposals, get_dashboard_visibility, diff_and_log_update
 from .models import Organisation, Proposal, Enquiry, Communication, Contact
+
+ORGANISATION_EDITABLE_FIELDS = [
+    "legal_name", "trading_name", "registration_number", "organisation_type", "industry",
+    "website", "phone", "email", "address", "client_status", "vip_level",
+    "relationship_owner_id", "client_since", "notes",
+]
+CONTACT_EDITABLE_FIELDS = [
+    "first_name", "last_name", "job_title", "email", "mobile", "office_phone",
+    "is_proposal_recipient", "is_invoice_recipient", "notes",
+]
 
 
 @login_required
@@ -54,6 +66,51 @@ def organisation_detail(request, pk):
         "proposals": proposals,
         "proposals_restricted": proposals_restricted,
         "projects": org.projects.all() if tab == "projects" else None,
+    })
+
+
+@login_required
+def organisation_edit(request, pk):
+    tenant = get_user_tenant(request)
+    org = get_object_or_404(Organisation, pk=pk, tenant=tenant)
+
+    if request.method == "POST":
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            messages.error(request, "You must give a reason for this change.")
+            return redirect("organisation_edit", pk=org.pk)
+
+        before = {f: getattr(org, f) for f in ORGANISATION_EDITABLE_FIELDS}
+
+        org.legal_name = request.POST.get("legal_name", org.legal_name).strip()
+        org.trading_name = request.POST.get("trading_name", "").strip()
+        org.registration_number = request.POST.get("registration_number", "").strip()
+        org.organisation_type = request.POST.get("organisation_type", "").strip()
+        org.industry = request.POST.get("industry", "").strip()
+        org.website = request.POST.get("website", "").strip()
+        org.phone = request.POST.get("phone", "").strip()
+        org.email = request.POST.get("email", "").strip()
+        org.address = request.POST.get("address", "").strip()
+        org.client_status = request.POST.get("client_status", org.client_status)
+        org.vip_level = request.POST.get("vip_level", "").strip()
+        org.relationship_owner_id = request.POST.get("relationship_owner") or None
+        org.client_since = request.POST.get("client_since") or None
+        org.notes = request.POST.get("notes", "").strip()
+        org.save()
+
+        changed = diff_and_log_update(request.user, tenant, org, before, reason)
+        if changed:
+            messages.success(request, "Organisation updated.")
+        else:
+            messages.success(request, "No changes were made.")
+        return redirect("organisation_detail", pk=org.pk)
+
+    return render(request, "crm/organisation_edit.html", {
+        "active_nav": "organisations",
+        "user_tenant": tenant,
+        "org": org,
+        "client_status_choices": Organisation.CLIENT_STATUS_CHOICES,
+        "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
     })
 
 
@@ -378,4 +435,42 @@ def contact_detail(request, pk):
         "user_tenant": tenant,
         "contact": contact,
         "project_roles": contact.project_stakeholder_roles.select_related("project").order_by("-project__start_date"),
+    })
+
+
+@login_required
+def contact_edit(request, pk):
+    tenant = get_user_tenant(request)
+    contact = get_object_or_404(Contact.objects.select_related("organisation"), pk=pk, tenant=tenant)
+
+    if request.method == "POST":
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            messages.error(request, "You must give a reason for this change.")
+            return redirect("contact_edit", pk=contact.pk)
+
+        before = {f: getattr(contact, f) for f in CONTACT_EDITABLE_FIELDS}
+
+        contact.first_name = request.POST.get("first_name", contact.first_name).strip()
+        contact.last_name = request.POST.get("last_name", contact.last_name).strip()
+        contact.job_title = request.POST.get("job_title", "").strip()
+        contact.email = request.POST.get("email", "").strip()
+        contact.mobile = request.POST.get("mobile", "").strip()
+        contact.office_phone = request.POST.get("office_phone", "").strip()
+        contact.is_proposal_recipient = request.POST.get("is_proposal_recipient") == "on"
+        contact.is_invoice_recipient = request.POST.get("is_invoice_recipient") == "on"
+        contact.notes = request.POST.get("notes", "").strip()
+        contact.save()
+
+        changed = diff_and_log_update(request.user, tenant, contact, before, reason)
+        if changed:
+            messages.success(request, "Contact updated.")
+        else:
+            messages.success(request, "No changes were made.")
+        return redirect("contact_detail", pk=contact.pk)
+
+    return render(request, "crm/contact_edit.html", {
+        "active_nav": "organisations",
+        "user_tenant": tenant,
+        "contact": contact,
     })

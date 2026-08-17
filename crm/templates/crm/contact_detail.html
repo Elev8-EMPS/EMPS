@@ -8,7 +8,7 @@
   <div class="meta">
     {% if contact.organisation %}<a href="/organisations/{{ contact.organisation.pk }}/">{{ contact.organisation.legal_name }}</a> &middot; {% endif %}
     {{ contact.job_title|default:"" }}
-    &middot; <a href="/admin/crm/contact/{{ contact.pk }}/change/">Edit in Admin</a>
+    &middot; <a href="/contacts/{{ contact.pk }}/edit/">Edit</a>
   </div>
 </div>
 

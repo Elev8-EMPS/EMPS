@@ -139,6 +139,20 @@ def require_delete_reason(request):
     return reason or None
 
 
+def diff_and_log_update(user, tenant, instance, before, reason):
+    """Compares `before` (a dict of field_name -> old value, captured
+    BEFORE the new values were applied) against `instance`'s current
+    values for those same fields, and logs one audit entry naming
+    which fields actually changed - skips logging entirely if nothing
+    actually differs, so a resubmitted form with no real edit doesn't
+    clutter the Activity Log. Returns the list of changed field names."""
+    from .models import log_audit
+    changed = [f for f, old in before.items() if getattr(instance, f) != old]
+    if changed:
+        log_audit(user, tenant, "update", instance, reason=reason, details=f"Changed: {', '.join(changed)}")
+    return changed
+
+
 def get_dashboard_visibility(tenant):
     """The tenant-level setting controlling what people WITHOUT
     proposal access see on their Command Centre. Defaults to the

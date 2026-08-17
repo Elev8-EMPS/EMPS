@@ -246,7 +246,7 @@ class AuditLogEntry(models.Model):
         return f"{self.get_action_display()} {self.model_name} #{self.object_id} by {self.user or 'system'}"
 
 
-def log_audit(user, tenant, action, instance, reason=""):
+def log_audit(user, tenant, action, instance, reason="", details=""):
     """Call this from any view or admin action to record an entry.
     `instance` should still exist (even mid-delete, before it's
     actually removed) so str(instance) captures something readable."""
@@ -258,4 +258,5 @@ def log_audit(user, tenant, action, instance, reason=""):
         object_id=str(instance.pk),
         object_repr=str(instance)[:255],
         reason=reason,
+        details=details,
     )

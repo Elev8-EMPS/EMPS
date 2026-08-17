@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ org.legal_name }} - EPMS{% endblock %}
+{% block header %}Edit {{ org.legal_name }}{% endblock %}
+{% block content %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Legal name <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="legal_name" value="{{ org.legal_name }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Trading name</label>
+          <input type="text" name="trading_name" value="{{ org.trading_name }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Registration number</label>
+          <input type="text" name="registration_number" value="{{ org.registration_number }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Organisation type</label>
+          <input type="text" name="organisation_type" value="{{ org.organisation_type }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Industry</label>
+          <input type="text" name="industry" value="{{ org.industry }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Website</label>
+          <input type="url" name="website" value="{{ org.website }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Phone</label>
+          <input type="text" name="phone" value="{{ org.phone }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Email</label>
+          <input type="email" name="email" value="{{ org.email }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Address</label>
+        <textarea name="address" rows="2" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ org.address }}</textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client status</label>
+          <select name="client_status" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            {% for value, label in client_status_choices %}<option value="{{ value }}" {% if org.client_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">VIP level</label>
+          <input type="text" name="vip_level" value="{{ org.vip_level }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client since</label>
+          <input type="date" name="client_since" value="{{ org.client_since|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Relationship owner</label>
+        <select name="relationship_owner" style="width:100%; max-width:340px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— None —</option>
+          {% for u in all_users %}<option value="{{ u.pk }}" {% if org.relationship_owner_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Notes</label>
+        <textarea name="notes" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ org.notes }}</textarea>
+      </div>
+      <div style="margin-bottom:20px; padding:14px; background:#fef3c7; border-radius:8px;">
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Reason for this change <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="reason" required placeholder="e.g. Corrected phone number after client called in" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <p style="font-size:12px; color:var(--muted); margin:6px 0 0;">Saved to the Audit Log with your name and the time, alongside whichever fields actually changed.</p>
+      </div>
+      <button type="submit" class="btn">Save changes</button>
+      <a href="/organisations/{{ org.pk }}/" style="margin-left:10px;">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ contact.first_name }} {{ contact.last_name }} - EPMS{% endblock %}
+{% block header %}Edit {{ contact.first_name }} {{ contact.last_name }}{% endblock %}
+{% block content %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">First name <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="first_name" value="{{ contact.first_name }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Last name <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="last_name" value="{{ contact.last_name }}" required style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Job title</label>
+        <input type="text" name="job_title" value="{{ contact.job_title }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Email</label>
+          <input type="email" name="email" value="{{ contact.email }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Mobile</label>
+          <input type="text" name="mobile" value="{{ contact.mobile }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Office phone</label>
+          <input type="text" name="office_phone" value="{{ contact.office_phone }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:20px; display:flex; gap:20px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px;"><input type="checkbox" name="is_proposal_recipient" {% if contact.is_proposal_recipient %}checked{% endif %}> Receives Fee Proposals</label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px;"><input type="checkbox" name="is_invoice_recipient" {% if contact.is_invoice_recipient %}checked{% endif %}> Receives invoices</label>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Notes</label>
+        <textarea name="notes" rows="3" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ contact.notes }}</textarea>
+      </div>
+      <div style="margin-bottom:20px; padding:14px; background:#fef3c7; border-radius:8px;">
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Reason for this change <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="reason" required placeholder="e.g. Updated mobile number after they changed jobs" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        <p style="font-size:12px; color:var(--muted); margin:6px 0 0;">Saved to the Audit Log with your name and the time, alongside whichever fields actually changed.</p>
+      </div>
+      <button type="submit" class="btn">Save changes</button>
+      <a href="/contacts/{{ contact.pk }}/" style="margin-left:10px;">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
