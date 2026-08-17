@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from tenants.utils import get_user_tenant, can_view_financials
 from delivery.models import Milestone
-from .models import Invoice, InvoiceFollowUp
+from .models import Invoice, InvoiceFollowUp, Payment
 
 
 @login_required
@@ -127,6 +127,39 @@ def invoice_detail(request, pk):
                 messages.success(request, f"Invoice {invoice.invoice_number} marked as Issued.")
             return redirect("invoice_detail", pk=invoice.pk)
 
+        if action == "add_payment":
+            if invoice.status == "draft":
+                messages.error(request, "Mark the invoice Issued before recording a payment against it.")
+                return redirect("invoice_detail", pk=invoice.pk)
+
+            amount = request.POST.get("payment_amount", "").strip()
+            try:
+                amount_val = round(float(amount), 2)
+                assert amount_val > 0
+            except (ValueError, AssertionError):
+                messages.error(request, "Enter a valid payment amount.")
+                return redirect("invoice_detail", pk=invoice.pk)
+
+            Payment.objects.create(
+                tenant=tenant, invoice=invoice,
+                payment_date=request.POST.get("payment_date") or timezone.localtime(timezone.now()).date(),
+                amount=amount_val,
+                method=request.POST.get("payment_method", "").strip(),
+                reference=request.POST.get("payment_reference", "").strip(),
+            )
+
+            from django.db.models import Sum
+            paid_total = invoice.payments.aggregate(total=Sum("amount"))["total"] or 0
+            invoice.amount_paid = paid_total
+            if paid_total >= invoice.total:
+                invoice.status = "paid"
+            elif paid_total > 0:
+                invoice.status = "part_paid"
+            invoice.save()
+
+            messages.success(request, f"Payment of ${amount_val} recorded.")
+            return redirect("invoice_detail", pk=invoice.pk)
+
         if action == "action_followup":
             from crm.models import add_working_days
             followup_id = request.POST.get("followup_id")
@@ -160,4 +193,4 @@ def invoice_detail(request, pk):
         "invoice": invoice,
         "payments": invoice.payments.order_by("-payment_date"),
         "follow_ups": invoice.follow_ups.all(),
-        })
+    })

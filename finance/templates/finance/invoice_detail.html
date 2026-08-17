@@ -43,9 +43,33 @@
   <h2>Payments <span class="count">({{ payments|length }})</span></h2>
   {% if payments %}
   <ul class="rows">
-    {% for p in payments %}<li>{{ p.payment_date }} &middot; {{ p.method|default:"—" }} <span class="tag ok">${{ p.amount }}</span></li>{% endfor %}
+    {% for p in payments %}<li>{{ p.payment_date }} &middot; {{ p.method|default:"—" }} <span class="tag ok">${{ p.amount }}</span>{% if p.reference %} <span style="color:var(--muted); font-size:12.5px;">ref: {{ p.reference }}</span>{% endif %}</li>{% endfor %}
   </ul>
-  {% else %}<div class="empty">No payments recorded yet. Add one via <a href="/admin/finance/payment/add/?invoice={{ invoice.pk }}">Admin</a>.</div>{% endif %}
+  {% else %}<div class="empty">No payments recorded yet.</div>{% endif %}
+
+  {% if invoice.status != 'draft' and invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.status != 'written_off' %}
+  <form method="post" style="padding:16px 18px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_payment">
+    <div>
+      <label style="display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;">Amount</label>
+      <input type="number" name="payment_amount" step="0.01" min="0.01" required placeholder="${{ invoice.outstanding_amount }} owing" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px; width:140px;">
+    </div>
+    <div>
+      <label style="display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;">Date</label>
+      <input type="date" name="payment_date" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px;">
+    </div>
+    <div>
+      <label style="display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;">Method</label>
+      <input type="text" name="payment_method" placeholder="e.g. Bank transfer" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px;">
+    </div>
+    <div>
+      <label style="display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;">Reference</label>
+      <input type="text" name="payment_reference" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px;">
+    </div>
+    <button type="submit" class="btn">Record payment</button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="section">
