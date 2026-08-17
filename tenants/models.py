@@ -92,12 +92,30 @@ class UserProfile(models.Model):
         "Modality", blank=True, related_name="user_profiles",
         help_text="Disciplines this person personally works in - independent of their team's modalities.",
     )
-    can_manage_proposals = models.BooleanField(
-        default=False,
-        help_text="Can see and work with Fee Proposals - fee amounts, follow-ups, and (in future) "
-                   "proposal letters/templates. Company Administrators and Directors always have "
-                   "this regardless of this checkbox; tick it for anyone else who should be able "
-                   "to create or view proposals.",
+    ACCESS_LEVEL_CHOICES = [
+        ("", "Use role default"),
+        ("none", "None"),
+        ("view", "View only"),
+        ("edit", "View & edit"),
+    ]
+    fees_access = models.CharField(
+        max_length=10, choices=ACCESS_LEVEL_CHOICES, blank=True,
+        help_text="Fee Proposals - amounts, documents, and (in future) proposal letters/templates. "
+                   "'None' means they don't see this section exists at all.",
+    )
+    financials_access = models.CharField(
+        max_length=10, choices=ACCESS_LEVEL_CHOICES, blank=True,
+        help_text="Invoices, payments, and WIP. 'Edit' is required to create invoices, mark them "
+                   "issued, or record payments - 'View' only shows the figures.",
+    )
+    confidential_access = models.CharField(
+        max_length=10, choices=[("", "Use role default"), ("none", "None"), ("edit", "Full access")],
+        blank=True, help_text="Confidential-marked documents and (in future) the HR section. No partial 'view only' level for this one.",
+    )
+    company_admin_access = models.CharField(
+        max_length=10, choices=[("", "Use role default"), ("none", "None"), ("edit", "Full access")],
+        blank=True, help_text="Creating/editing users, teams, and tenant settings; approving anyone's "
+                               "leave company-wide (in addition to Directors and a person's own manager).",
     )
 
     def __str__(self):
@@ -190,3 +208,54 @@ class ChecklistItemTemplate(models.Model):
 
     def __str__(self):
         return self.text
+
+
+class AuditLogEntry(models.Model):
+    """
+    A shared, append-only record of who did what, where, and why -
+    covering both the app's own screens and Django Admin. Every
+    delete anywhere in the system requires a reason and is logged
+    here; creates/updates are logged where the reason matters most
+    (deletes always; other actions where the calling code chooses to).
+    Deliberately NOT a TenantModel subclass - it must survive even if
+    the tenant itself is later removed, and a superuser's own actions
+    (e.g. in Admin with no tenant scoping) still need to be captured.
+    """
+
+    ACTION_CHOICES = [
+        ("create", "Create"),
+        ("update", "Update"),
+        ("delete", "Delete"),
+    ]
+
+    tenant = models.ForeignKey(Tenant, null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_entries")
+    user = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_entries")
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=100, help_text="e.g. 'delivery.Project'")
+    object_id = models.CharField(max_length=50)
+    object_repr = models.CharField(max_length=255, help_text="What the record looked like at the time, so the log stays readable even after a delete.")
+    reason = models.TextField(blank=True)
+    details = models.TextField(blank=True, help_text="Optional extra context, e.g. which fields changed.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "Audit log entries"
+
+    def __str__(self):
+        return f"{self.get_action_display()} {self.model_name} #{self.object_id} by {self.user or 'system'}"
+
+
+def log_audit(user, tenant, action, instance, reason=""):
+    """Call this from any view or admin action to record an entry.
+    `instance` should still exist (even mid-delete, before it's
+    actually removed) so str(instance) captures something readable."""
+    AuditLogEntry.objects.create(
+        tenant=tenant,
+        user=user if getattr(user, "is_authenticated", False) else None,
+        action=action,
+        model_name=f"{instance._meta.app_label}.{instance._meta.model_name}",
+        object_id=str(instance.pk),
+        object_repr=str(instance)[:255],
+        reason=reason,
+    )

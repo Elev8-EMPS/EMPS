@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from tenants.models import Team
-from tenants.utils import get_user_tenant, can_view_confidential, can_approve_leave, get_display_names
+from tenants.utils import get_user_tenant, has_company_wide_scope, can_approve_leave, get_display_names
 from delivery.models import Milestone, Project, Task
 from .models import LeaveRequest, WFHDay, CalendarScope, WEEKDAY_CHOICES
 
@@ -27,7 +27,7 @@ def _visible_users(request_user, tenant):
     """Whose leave/WFH this person can see on the team calendar.
     Directors/Company Admins see the whole tenant (narrowable via
     CalendarScope); everyone else sees their direct reports."""
-    if can_view_confidential(request_user):
+    if has_company_wide_scope(request_user):
         scope, _ = CalendarScope.objects.get_or_create(user=request_user)
         teams = scope.included_teams.all()
         if teams.exists():
@@ -84,7 +84,7 @@ def calendar_view(request):
     next_month = (last_of_month + datetime.timedelta(days=1))
 
     visible_users = _visible_users(request.user, tenant)
-    is_approver = can_view_confidential(request.user) or User.objects.filter(
+    is_approver = has_company_wide_scope(request.user) or User.objects.filter(
         profile__tenant=tenant, profile__manager=request.user
     ).exists()
 
@@ -119,7 +119,7 @@ def calendar_view(request):
     deadlines_base = Milestone.objects.filter(
         tenant=tenant, deadline__gte=first_of_month, deadline__lte=last_of_month,
     ).select_related("project")
-    if can_view_confidential(request.user):
+    if has_company_wide_scope(request.user):
         deadlines_qs = deadlines_base
     else:
         relevance = Q(responsible_user=request.user) | Q(project__project_manager=request.user) | Q(project__director=request.user)
@@ -157,7 +157,7 @@ def calendar_view(request):
 
     pending_approvals_count = 0
     if is_approver:
-        approvable_users = visible_users if can_view_confidential(request.user) else User.objects.filter(
+        approvable_users = visible_users if has_company_wide_scope(request.user) else User.objects.filter(
             profile__tenant=tenant, profile__manager=request.user
         )
         pending_approvals_count = LeaveRequest.objects.filter(
@@ -176,7 +176,7 @@ def calendar_view(request):
         "leave_type_choices": LeaveRequest.LEAVE_TYPE_CHOICES,
         "weekday_choices": WEEKDAY_CHOICES,
         "is_approver": is_approver,
-        "is_admin_scope": can_view_confidential(request.user),
+        "is_admin_scope": has_company_wide_scope(request.user),
         "pending_approvals_count": pending_approvals_count,
         "my_wfh_days": WFHDay.objects.filter(tenant=tenant, user=request.user).order_by("weekday"),
     })
@@ -272,7 +272,7 @@ def my_leave_requests(request):
 def leave_approvals(request):
     tenant = get_user_tenant(request)
 
-    if can_view_confidential(request.user):
+    if has_company_wide_scope(request.user):
         approvable_users = User.objects.filter(profile__tenant=tenant)
     else:
         approvable_users = User.objects.filter(profile__tenant=tenant, profile__manager=request.user)
@@ -342,7 +342,7 @@ def leave_decide(request, pk):
 @login_required
 def calendar_scope_edit(request):
     tenant = get_user_tenant(request)
-    if not can_view_confidential(request.user):
+    if not has_company_wide_scope(request.user):
         messages.error(request, "You don't have permission to change this.")
         return redirect("calendar")
 

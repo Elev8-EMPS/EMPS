@@ -9,12 +9,13 @@
   <a href="?tab=modalities" class="{% if tab == 'modalities' %}active{% endif %}">Modalities</a>
   <a href="?tab=deadline_categories" class="{% if tab == 'deadline_categories' %}active{% endif %}">Deadline categories</a>
   <a href="?tab=settings" class="{% if tab == 'settings' %}active{% endif %}">Settings</a>
+  <a href="?tab=activity" class="{% if tab == 'activity' %}active{% endif %}">Activity Log</a>
 </div>
 
 {% if tab == 'users' %}
 <div style="text-align:right; margin-bottom:14px;"><a href="/manage/users/new/" class="btn" style="background:var(--ok);">+ New user</a></div>
 <table class="list">
-  <tr><th>Username</th><th>Name</th><th>Role</th><th>Manager</th><th>Teams</th><th>Fee Proposals</th><th>Status</th></tr>
+  <tr><th>Username</th><th>Name</th><th>Role</th><th>Manager</th><th>Teams</th><th>Access (Fees / Financials / Confidential / Admin)</th><th>Status</th></tr>
   {% for u in users %}
   <tr>
     <td><a href="/manage/users/{{ u.pk }}/edit/">{{ u.username }}</a></td>
@@ -22,7 +23,12 @@
     <td>{{ u.profile.get_role_display|default:"—" }}</td>
     <td>{% if u.profile.manager %}{{ u.profile.manager.get_full_name|default:u.profile.manager.username }}{% else %}—{% endif %}</td>
     <td>{% for t in u.teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-    <td>{% if u.profile.role == 'company_admin' or u.profile.role == 'director' %}<span class="tag ok">Always</span>{% elif u.profile.can_manage_proposals %}<span class="tag ok">Yes</span>{% else %}—{% endif %}</td>
+    <td style="font-size:12px; white-space:nowrap;">
+      <span class="tag {% if u.access_levels.fees == 'edit' %}ok{% elif u.access_levels.fees == 'view' %}warn{% else %}{% endif %}">{{ u.access_levels.fees|default:"none" }}</span>
+      <span class="tag {% if u.access_levels.financials == 'edit' %}ok{% elif u.access_levels.financials == 'view' %}warn{% else %}{% endif %}">{{ u.access_levels.financials|default:"none" }}</span>
+      <span class="tag {% if u.access_levels.confidential == 'edit' %}ok{% else %}{% endif %}">{{ u.access_levels.confidential|default:"none" }}</span>
+      <span class="tag {% if u.access_levels.company_admin == 'edit' %}ok{% else %}{% endif %}">{{ u.access_levels.company_admin|default:"none" }}</span>
+    </td>
     <td><span class="tag {% if u.is_active %}ok{% else %}danger{% endif %}">{{ u.is_active|yesno:"Active,Retired" }}</span></td>
   </tr>
   {% endfor %}
@@ -127,6 +133,33 @@
     </form>
   </div>
 </div>
+{% endif %}
+
+{% if tab == 'activity' %}
+<form method="get" style="display:flex; gap:10px; margin-bottom:14px; align-items:center;">
+  <input type="hidden" name="tab" value="activity">
+  <select name="user" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px;">
+    <option value="">Everyone</option>
+    {% for u in activity_users %}<option value="{{ u.pk }}" {% if request.GET.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+  </select>
+  <select name="action_type" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px;">
+    <option value="">Every action</option>
+    {% for value, label in activity_action_choices %}<option value="{{ value }}" {% if request.GET.action_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</form>
+<table class="list">
+  <tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Reason</th></tr>
+  {% for entry in activity_entries %}
+  <tr>
+    <td style="white-space:nowrap; font-size:12.5px;">{{ entry.created_at|date:"d M Y, H:i" }}</td>
+    <td>{{ entry.user.get_full_name|default:entry.user.username|default:"—" }}</td>
+    <td><span class="tag {% if entry.action == 'delete' %}danger{% elif entry.action == 'create' %}ok{% else %}warn{% endif %}">{{ entry.get_action_display }}</span></td>
+    <td>{{ entry.model_name }} &middot; {{ entry.object_repr }}</td>
+    <td style="font-size:12.5px; color:var(--muted);">{{ entry.reason|default:"—" }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="5" class="empty">No activity recorded yet.</td></tr>{% endfor %}
+</table>
+<p style="font-size:12.5px; color:var(--muted); margin-top:10px;">Showing the most recent 300 entries.</p>
 {% endif %}
 
 {% endblock %}

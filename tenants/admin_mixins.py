@@ -1,6 +1,60 @@
 import csv
 
+from django.contrib import messages
 from django.http import HttpResponse
+from django.shortcuts import render
+
+
+class AuditedAdminMixin:
+    """
+    Mixin for any ModelAdmin that should feed the shared Audit Log:
+    - Every create/update via Admin is logged automatically.
+    - Every delete (single record, or a bulk 'Delete selected' action)
+      is BLOCKED until a reason is typed in - no reason, no delete.
+    Put this first in the class bases, ahead of TenantScopedAdmin, e.g.
+    class FooAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin).
+    """
+
+    def save_model(self, request, obj, form, change):
+        from .models import log_audit
+        super().save_model(request, obj, form, change)
+        tenant = getattr(obj, "tenant", None)
+        log_audit(request.user, tenant, "update" if change else "create", obj)
+
+    def delete_view(self, request, object_id, extra_context=None):
+        obj = self.get_object(request, object_id)
+        if request.method == "POST":
+            reason = request.POST.get("audit_reason", "").strip()
+            if not reason:
+                messages.error(request, "You must give a reason before this can be deleted.")
+                return self._render_delete_reason_prompt(request, obj)
+            from .models import log_audit
+            tenant = getattr(obj, "tenant", None)
+            log_audit(request.user, tenant, "delete", obj, reason=reason)
+        return super().delete_view(request, object_id, extra_context)
+
+    def _render_delete_reason_prompt(self, request, obj):
+        return render(request, "admin/delete_reason_prompt.html", {
+            "object": obj,
+            "object_id": obj.pk,
+            "opts": self.model._meta,
+            "app_label": self.model._meta.app_label,
+        })
+
+    def delete_queryset(self, request, queryset):
+        # Bulk 'Delete selected' action - Admin doesn't give us a way
+        # to collect a reason mid-action, so route people to delete
+        # records one at a time instead, where the reason prompt applies.
+        messages.error(
+            request,
+            "Bulk delete is disabled here - a reason is required for every deletion, "
+            "so please delete records one at a time from each record's own Delete button.",
+        )
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
 
 
 class TenantScopedAdmin:

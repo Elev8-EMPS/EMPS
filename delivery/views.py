@@ -8,7 +8,7 @@ from django.utils import timezone
 import datetime
 
 from tenants.models import Team, Modality, ChecklistItemTemplate, DeadlineCategory
-from tenants.utils import get_user_tenant, can_view_confidential, can_view_financials
+from tenants.utils import get_user_tenant, has_company_wide_scope, can_view_financials, can_edit_financials, can_view_document, visible_document_filter, require_delete_reason
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
@@ -43,6 +43,12 @@ def stakeholder_edit(request, pk):
         action = request.POST.get("action")
 
         if action == "delete":
+            reason = require_delete_reason(request)
+            if not reason:
+                messages.error(request, "You must give a reason to remove this person from the project.")
+                return redirect(f"/projects/{project_pk}/?tab=people")
+            from tenants.models import log_audit
+            log_audit(request.user, tenant, "delete", stakeholder, reason=reason)
             stakeholder.delete()
             return redirect(f"/projects/{project_pk}/?tab=people")
 
@@ -312,7 +318,7 @@ def project_detail(request, pk):
         "tab": tab,
         "milestones": project.milestones.order_by("deadline") if tab == "milestones" else None,
         "tasks": project.tasks.order_by("due_date") if tab == "tasks" else None,
-        "documents": project.documents.order_by("-uploaded_at") if tab == "documents" else None,
+        "documents": project.documents.filter(visible_document_filter(request.user)).order_by("-uploaded_at") if tab == "documents" else None,
         "invoices": project.invoices.order_by("-due_date") if tab == "finance" else None,
         "can_view_project_financials": can_view_financials(request.user) or request.user.id in (
             project.project_manager_id, project.director_id
@@ -438,6 +444,12 @@ def milestone_edit(request, pk):
             return redirect("milestone_detail", pk=milestone.pk)
 
         if action == "delete":
+            reason = require_delete_reason(request)
+            if not reason:
+                messages.error(request, "You must give a reason to delete this deadline.")
+                return redirect("milestone_detail", pk=milestone.pk)
+            from tenants.models import log_audit
+            log_audit(request.user, tenant, "delete", milestone, reason=reason)
             project_pk = milestone.project_id
             milestone.delete()
             messages.success(request, "Deadline deleted.")
@@ -584,7 +596,7 @@ def due_reminders(request):
         deadline_time__lte=now.time(), deadline_time__gte=window_start,
     ).select_related("project")
 
-    if not can_view_confidential(request.user):
+    if not has_company_wide_scope(request.user):
         my_team_modality_ids = list(
             request.user.teams.filter(tenant=tenant).values_list("modalities__id", flat=True).distinct()
         )
@@ -739,6 +751,7 @@ def task_detail(request, pk):
 def document_list(request):
     tenant = get_user_tenant(request)
     documents = Document.objects.filter(tenant=tenant) if tenant else Document.objects.none()
+    documents = documents.filter(visible_document_filter(request.user))
 
     category = request.GET.get("category", "").strip()
     if category:
@@ -767,6 +780,9 @@ def document_detail(request, pk):
     document = get_object_or_404(
         Document.objects.select_related("related_project", "uploaded_by"), pk=pk, tenant=tenant
     )
+    if not can_view_document(request.user, document):
+        messages.error(request, "You don't have permission to view this document.")
+        return redirect("document_list")
     return render(request, "delivery/document_detail.html", {
         "active_nav": "documents",
         "user_tenant": tenant,

@@ -1,9 +1,20 @@
 from django.db import models
 
-
-FINANCIAL_ROLES = {"company_admin", "director", "accounts"}
-CONFIDENTIAL_ROLES = {"company_admin", "director"}
-PROPOSAL_ROLES = {"company_admin", "director"}
+# Every role's starting point for the four permission domains. A person's
+# individual profile can override any one of these on the Manage > Users
+# screen; blank ("") on the profile means "use whatever's here".
+ROLE_DEFAULTS = {
+    "company_admin": {"fees": "edit", "financials": "edit", "confidential": "edit", "company_admin": "edit"},
+    "director": {"fees": "edit", "financials": "edit", "confidential": "edit", "company_admin": "edit"},
+    "accounts": {"fees": "view", "financials": "edit", "confidential": "none", "company_admin": "none"},
+    "project_manager": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+    "engineer": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+    "administration": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+    "external_consultant": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+    "client_user": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+    "read_only": {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"},
+}
+NO_ACCESS = {"fees": "none", "financials": "none", "confidential": "none", "company_admin": "none"}
 
 
 def get_user_role(user):
@@ -13,31 +24,64 @@ def get_user_role(user):
     return profile.role if profile else ""
 
 
+def get_access_level(user, domain):
+    """The effective None/View/Edit level for `user` in one of the four
+    permission domains ('fees', 'financials', 'confidential', 'company_admin'):
+    superusers always get 'edit'; otherwise an explicit override on the
+    person's profile wins, falling back to their role's default."""
+    if user.is_superuser:
+        return "edit"
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return "none"
+    override = getattr(profile, f"{domain}_access", "")
+    if override:
+        return override
+    return ROLE_DEFAULTS.get(profile.role, NO_ACCESS).get(domain, "none")
+
+
 def can_view_financials(user):
-    """Invoices, payments, fee amounts on proposals - restricted to
-    admin, director, and accounts roles, per the blueprint's rule
-    that financial data isn't visible to everyone by default."""
-    return get_user_role(user) in FINANCIAL_ROLES
+    """Invoices, payments, fee amounts, WIP - View or Edit level on the
+    Financials domain."""
+    return get_access_level(user, "financials") in ("view", "edit")
+
+
+def can_edit_financials(user):
+    """Creating invoices, marking them issued, recording payments -
+    requires Edit level specifically, not just View."""
+    return get_access_level(user, "financials") == "edit"
 
 
 def can_view_confidential(user):
-    """Employee records, confidential company documents - admin and
-    director only."""
-    return get_user_role(user) in CONFIDENTIAL_ROLES
+    """Confidential-marked documents and (in future) the HR section -
+    Edit is the only 'has access' level for this domain."""
+    return get_access_level(user, "confidential") == "edit"
 
 
 def can_view_proposals(user):
-    """Fee Proposals - including fee amounts and (future) proposal
-    letters/templates - are opt-in visible. Company Administrators
-    and Directors always qualify; everyone else needs
-    `can_manage_proposals` explicitly ticked on their profile via
-    Manage. Deliberately separate from `can_view_financials`: an
-    Accounts user sees invoices without automatically seeing fee
-    proposals, and vice versa."""
-    if get_user_role(user) in PROPOSAL_ROLES:
-        return True
-    profile = getattr(user, "profile", None)
-    return bool(profile and profile.can_manage_proposals)
+    """Fee Proposals - View or Edit level on the Fees domain."""
+    return get_access_level(user, "fees") in ("view", "edit")
+
+
+def can_edit_proposals(user):
+    """Creating/modifying Fee Proposals - requires Edit level."""
+    return get_access_level(user, "fees") == "edit"
+
+
+def can_manage_company(user):
+    """Creating/editing users, teams, and tenant settings; approving
+    anyone's leave company-wide - Edit level on the Company Admin domain."""
+    return get_access_level(user, "company_admin") == "edit"
+
+
+def has_company_wide_scope(user):
+    """Directors and anyone with Company Admin access see everything
+    company-wide (all leave, all milestone reminders, the whole Manage
+    hub); everyone else is scoped to their own team/direct reports.
+    Deliberately separate from can_view_confidential - seeing the whole
+    company's calendar isn't the same permission as seeing a
+    confidential-marked document."""
+    return get_user_role(user) == "director" or can_manage_company(user)
 
 
 def can_view_fee_amounts(user):
@@ -77,13 +121,22 @@ def visible_document_filter(user):
 
 def can_approve_leave(actor, target_user):
     """Who's allowed to approve/decline a leave or WFH request for
-    `target_user`: their Line Manager specifically, or anyone with
-    the Director/Company Admin role - matching the rule that only
-    managers, directors, and company admins can act on leave."""
-    if get_user_role(actor) in CONFIDENTIAL_ROLES:  # company_admin, director
+    `target_user`: Company Admin access, any Director, or their direct
+    line manager specifically."""
+    if get_user_role(actor) == "director" or can_manage_company(actor):
         return True
     profile = getattr(target_user, "profile", None)
     return bool(profile and profile.manager_id == actor.id)
+
+
+def require_delete_reason(request):
+    """Pulls a 'delete_reason' field out of a POST, stripped. Returns
+    None (and leaves it to the caller to bail out with an error
+    message) if nothing meaningful was given - this is the shared
+    gate every in-app delete action should call before actually
+    deleting anything."""
+    reason = request.POST.get("delete_reason", "").strip()
+    return reason or None
 
 
 def get_dashboard_visibility(tenant):

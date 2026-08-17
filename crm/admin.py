@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
+from tenants.admin_mixins import AuditedAdminMixin, ExportCsvMixin, TenantScopedAdmin
 from .models import Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp
 
 
 @admin.register(Organisation)
-class OrganisationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class OrganisationAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("legal_name", "client_status", "vip_level", "industry", "relationship_owner", "last_contact", "tenant")
     list_filter = ("client_status", "vip_level", "industry", "is_active", "tenant")
     search_fields = ("legal_name", "trading_name", "email", "phone")
@@ -13,14 +13,14 @@ class OrganisationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Contact)
-class ContactAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class ContactAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("first_name", "last_name", "organisation", "email", "mobile", "is_active", "tenant")
     list_filter = ("is_active", "is_proposal_recipient", "is_invoice_recipient", "tenant")
     search_fields = ("first_name", "last_name", "email", "mobile")
 
 
 @admin.register(Enquiry)
-class EnquiryAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class EnquiryAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("enquiry_number", "organisation", "status", "responsible_director", "date_received", "proposal_due_date", "tenant")
     list_filter = ("status", "source", "tenant")
     search_fields = ("enquiry_number", "organisation__legal_name", "description")
@@ -28,7 +28,7 @@ class EnquiryAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Proposal)
-class ProposalAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class ProposalAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("proposal_number", "organisation", "status", "fee_amount", "issue_date", "follow_up_date", "tenant")
     list_filter = ("status", "tenant")
     search_fields = ("proposal_number", "organisation__legal_name")
@@ -36,7 +36,7 @@ class ProposalAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Communication)
-class CommunicationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class CommunicationAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("subject", "communication_type", "direction", "related_project", "organisation", "occurred_at", "logged_by", "tenant")
     list_filter = ("communication_type", "direction", "tenant")
     search_fields = ("subject", "body", "organisation__legal_name")
@@ -49,6 +49,6 @@ class CommunicationAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(ProposalFollowUp)
-class ProposalFollowUpAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class ProposalFollowUpAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("proposal", "follow_up_number", "due_date", "status", "outcome", "tenant")
     list_filter = ("status", "outcome", "tenant")

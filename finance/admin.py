@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
+from tenants.admin_mixins import AuditedAdminMixin, ExportCsvMixin, TenantScopedAdmin
 from .models import Invoice, Payment, InvoiceFollowUp
 
 
 @admin.register(Invoice)
-class InvoiceAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class InvoiceAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("invoice_number", "project", "organisation", "status", "total", "amount_paid", "outstanding_amount", "due_date", "xero_reminders_sent", "statement_sent", "tenant")
     list_filter = ("status", "tenant")
     search_fields = ("invoice_number", "organisation__legal_name", "project__project_number", "po_number")
@@ -13,7 +13,7 @@ class InvoiceAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Payment)
-class PaymentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class PaymentAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("invoice", "payment_date", "amount", "method", "reference", "tenant")
     list_filter = ("method", "tenant")
     search_fields = ("invoice__invoice_number", "reference")
@@ -21,6 +21,6 @@ class PaymentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(InvoiceFollowUp)
-class InvoiceFollowUpAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class InvoiceFollowUpAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("invoice", "follow_up_number", "due_date", "status", "tenant")
     list_filter = ("status", "tenant")

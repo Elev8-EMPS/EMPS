@@ -152,5 +152,19 @@
 </script>
 {% endif %}
 
+<script>
+// Shared by any inline delete form across the app: give it
+// onsubmit="return fillDeleteReason(this, '...what is being deleted...')"
+// and a <input type="hidden" name="delete_reason" class="delete-reason-field">
+// and it'll block the delete until a reason is typed in.
+function fillDeleteReason(form, whatLabel) {
+  var reason = prompt("Reason for deleting " + (whatLabel || "this") + " permanently? (required, saved to the Audit Log)");
+  if (!reason || !reason.trim()) { alert("A reason is required to delete this."); return false; }
+  var field = form.querySelector('.delete-reason-field');
+  if (field) { field.value = reason.trim(); }
+  return true;
+}
+</script>
+
 </body>
 </html>

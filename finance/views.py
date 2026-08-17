@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.utils import get_user_tenant, can_view_financials
+from tenants.utils import get_user_tenant, can_view_financials, can_edit_financials
 from delivery.models import Milestone
 from .models import Invoice, InvoiceFollowUp, Payment
 
@@ -15,7 +15,7 @@ def invoice_create(request, milestone_pk):
     project = milestone.project
     TAX_RATE = 0.10  # Australian GST
 
-    can_create = can_view_financials(request.user) or request.user.id in (
+    can_create = can_edit_financials(request.user) or request.user.id in (
         project.project_manager_id, project.director_id
     )
     if not can_create:
@@ -115,6 +115,10 @@ def invoice_detail(request, pk):
     )
 
     if request.method == "POST":
+        if not can_edit_financials(request.user):
+            messages.error(request, "Your financial access is view-only - you can't make changes to invoices.")
+            return redirect("invoice_detail", pk=invoice.pk)
+
         action = request.POST.get("action")
 
         if action == "mark_issued":

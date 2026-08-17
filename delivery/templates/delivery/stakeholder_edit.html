@@ -64,8 +64,9 @@ function toggleStakeholderExternalFields(select) {
     {% else %}
     <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="archive"><button type="submit" class="btn" style="background:var(--warn);">Archive</button></form>
     {% endif %}
-    <form method="post" style="display:inline;" onsubmit="return confirm('Delete this stakeholder permanently? This cannot be undone.');">
+    <form method="post" style="display:inline;" onsubmit="return fillDeleteReason(this, 'this stakeholder');">
       {% csrf_token %}<input type="hidden" name="action" value="delete">
+      <input type="hidden" name="delete_reason" class="delete-reason-field">
       <button type="submit" class="btn" style="background:var(--danger);">Delete permanently</button>
     </form>
   </div>

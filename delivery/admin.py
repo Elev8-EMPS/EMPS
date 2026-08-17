@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from tenants.admin_mixins import ExportCsvMixin, TenantScopedAdmin
+from tenants.admin_mixins import AuditedAdminMixin, ExportCsvMixin, TenantScopedAdmin
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 
 @admin.register(Project)
-class ProjectAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class ProjectAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("project_number", "name", "client_organisation", "billing_organisation", "project_manager", "status", "target_completion_date", "tenant")
     list_filter = ("status", "tenant")
     search_fields = ("project_number", "name", "client_organisation__legal_name")
@@ -14,7 +14,7 @@ class ProjectAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Milestone)
-class MilestoneAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class MilestoneAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("project", "milestone_type", "deadline", "status", "responsible_user", "invoice_required", "tenant")
     list_filter = ("status", "milestone_type", "invoice_required", "director_approval_required", "tenant")
     search_fields = ("project__project_number", "project__name", "milestone_type")
@@ -22,7 +22,7 @@ class MilestoneAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Task)
-class TaskAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class TaskAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("title", "owner", "assigned_team", "status", "priority", "category", "due_date", "created_by", "tenant")
     list_filter = ("status", "priority", "category", "assigned_team", "tenant")
     search_fields = ("title", "description")
@@ -35,7 +35,7 @@ class TaskAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(Document)
-class DocumentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
+class DocumentAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
     list_display = ("display_name", "related_project", "category", "document_type", "version", "confidentiality", "uploaded_by", "uploaded_at", "tenant")
     list_editable = ("confidentiality",)
     list_filter = ("category", "document_type", "confidentiality", "tenant")
@@ -44,24 +44,24 @@ class DocumentAdmin(TenantScopedAdmin, ExportCsvMixin, admin.ModelAdmin):
 
 
 @admin.register(TaskComment)
-class TaskCommentAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class TaskCommentAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("task", "author", "created_at", "tenant")
     list_filter = ("tenant",)
 
 
 @admin.register(ProjectChecklistItem)
-class ProjectChecklistItemAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class ProjectChecklistItemAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("text", "project", "modality", "is_done", "tenant")
     list_filter = ("is_done", "modality", "tenant")
 
 
 @admin.register(ProjectStakeholder)
-class ProjectStakeholderAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class ProjectStakeholderAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("project", "role", "display_name", "external_company", "tenant")
     list_filter = ("role", "tenant")
 
 
 @admin.register(ProjectScopeAddition)
-class ProjectScopeAdditionAdmin(TenantScopedAdmin, admin.ModelAdmin):
+class ProjectScopeAdditionAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("full_code", "project", "modality", "is_original_scope", "budget_amount", "tenant")
     list_filter = ("is_original_scope", "tenant")

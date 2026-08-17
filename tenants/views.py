@@ -8,7 +8,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Team, Modality, UserProfile, ChecklistItemTemplate, Tenant, DeadlineCategory
-from .utils import get_user_tenant, can_view_confidential
+from .utils import get_user_tenant, can_manage_company, require_delete_reason
 from leave.models import WFHDay, WEEKDAY_CHOICES
 
 # A palette of visually distinct colours - new deadline categories cycle
@@ -42,7 +42,7 @@ def _parse_date(value):
 def _require_admin(request):
     """Every view in this file is admin/director-only - this is where
     staff, teams, and modalities get managed, not day-to-day work."""
-    if not can_view_confidential(request.user):
+    if not can_manage_company(request.user):
         messages.error(request, "You don't have permission to access the management area.")
         return redirect("command_centre")
     return None
@@ -91,15 +91,48 @@ def manage_hub(request):
                 category.save()
                 messages.success(request, f"Updated '{name}'.")
         elif action == "delete":
-            DeadlineCategory.objects.filter(tenant=tenant, pk=request.POST.get("category_id")).delete()
-            messages.success(request, "Deleted.")
+            reason = require_delete_reason(request)
+            category = DeadlineCategory.objects.filter(tenant=tenant, pk=request.POST.get("category_id")).first()
+            if not reason:
+                messages.error(request, "You must give a reason to delete this category.")
+            elif category:
+                from .models import log_audit
+                log_audit(request.user, tenant, "delete", category, reason=reason)
+                category.delete()
+                messages.success(request, "Deleted.")
         return redirect("/manage/?tab=deadline_categories")
+
+    from .utils import get_access_level
+    from .models import AuditLogEntry
+    users_list = None
+    if tab == "users":
+        users_list = list(User.objects.filter(profile__tenant=tenant).select_related("profile").order_by("username"))
+        for u in users_list:
+            u.access_levels = {
+                "fees": get_access_level(u, "fees"),
+                "financials": get_access_level(u, "financials"),
+                "confidential": get_access_level(u, "confidential"),
+                "company_admin": get_access_level(u, "company_admin"),
+            }
+
+    activity_entries = None
+    if tab == "activity":
+        activity_entries = AuditLogEntry.objects.filter(tenant=tenant).select_related("user").order_by("-created_at")[:300]
+        filter_user_id = request.GET.get("user")
+        if filter_user_id:
+            activity_entries = activity_entries.filter(user_id=filter_user_id)
+        filter_action = request.GET.get("action_type")
+        if filter_action:
+            activity_entries = activity_entries.filter(action=filter_action)
 
     return render(request, "tenants/manage_hub.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
         "tab": tab,
-        "users": User.objects.filter(profile__tenant=tenant).select_related("profile").order_by("username") if tab == "users" else None,
+        "users": users_list,
+        "activity_entries": activity_entries,
+        "activity_action_choices": AuditLogEntry.ACTION_CHOICES,
+        "activity_users": User.objects.filter(profile__tenant=tenant).order_by("username") if tab == "activity" else None,
         "teams": Team.objects.filter(tenant=tenant).order_by("name") if tab == "teams" else None,
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name") if tab == "modalities" else None,
         "deadline_categories": DeadlineCategory.objects.filter(tenant=tenant).order_by("name") if tab == "deadline_categories" else None,
@@ -130,6 +163,10 @@ def manage_user_create(request):
         date_of_birth = _parse_date(request.POST.get("date_of_birth"))
         date_started = _parse_date(request.POST.get("date_started"))
         manager_id = request.POST.get("manager") or None
+        fees_access = request.POST.get("fees_access", "")
+        financials_access = request.POST.get("financials_access", "")
+        confidential_access = request.POST.get("confidential_access", "")
+        company_admin_access = request.POST.get("company_admin_access", "")
 
         if username and password and not User.objects.filter(username=username).exists():
             try:
@@ -140,7 +177,8 @@ def manage_user_create(request):
                     )
                     profile = UserProfile.objects.create(
                         user=user, tenant=tenant, role=role, manager_id=manager_id,
-                        can_manage_proposals=request.POST.get("can_manage_proposals") == "on",
+                        fees_access=fees_access, financials_access=financials_access,
+                        confidential_access=confidential_access, company_admin_access=company_admin_access,
                         phone=phone, date_of_birth=date_of_birth, date_started=date_started,
                     )
                     team_ids = request.POST.getlist("teams")
@@ -167,6 +205,8 @@ def manage_user_create(request):
         "active_nav": "manage",
         "user_tenant": tenant,
         "role_choices": UserProfile.ROLE_CHOICES,
+        "access_level_choices": UserProfile.ACCESS_LEVEL_CHOICES,
+        "binary_access_choices": [("", "Use role default"), ("none", "None"), ("edit", "Full access")],
         "teams": Team.objects.filter(tenant=tenant).order_by("name"),
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
         "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
@@ -191,7 +231,10 @@ def manage_user_edit(request, pk):
             try:
                 with transaction.atomic():
                     profile.role = request.POST.get("role", "")
-                    profile.can_manage_proposals = request.POST.get("can_manage_proposals") == "on"
+                    profile.fees_access = request.POST.get("fees_access", "")
+                    profile.financials_access = request.POST.get("financials_access", "")
+                    profile.confidential_access = request.POST.get("confidential_access", "")
+                    profile.company_admin_access = request.POST.get("company_admin_access", "")
                     profile.phone = request.POST.get("phone", "").strip()
                     profile.date_of_birth = _parse_date(request.POST.get("date_of_birth"))
                     profile.date_started = _parse_date(request.POST.get("date_started"))
@@ -234,12 +277,19 @@ def manage_user_edit(request, pk):
 
         return redirect("manage_user_edit", pk=target_user.pk)
 
+    from .utils import get_access_level
     return render(request, "tenants/manage_user_edit.html", {
         "active_nav": "manage",
         "user_tenant": tenant,
         "target_user": target_user,
         "profile": profile,
         "role_choices": UserProfile.ROLE_CHOICES,
+        "access_level_choices": UserProfile.ACCESS_LEVEL_CHOICES,
+        "binary_access_choices": [("", "Use role default"), ("none", "None"), ("edit", "Full access")],
+        "current_fees_level": get_access_level(target_user, "fees"),
+        "current_financials_level": get_access_level(target_user, "financials"),
+        "current_confidential_level": get_access_level(target_user, "confidential"),
+        "current_company_admin_level": get_access_level(target_user, "company_admin"),
         "teams": Team.objects.filter(tenant=tenant).order_by("name"),
         "my_team_ids": set(target_user.teams.values_list("id", flat=True)),
         "modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
@@ -301,6 +351,12 @@ def manage_team_edit(request, pk):
                 logger.exception("Failed to update team '%s' via Manage", team.name)
                 messages.error(request, "Something went wrong saving those changes - nothing was updated, try again.")
         elif action == "delete":
+            reason = require_delete_reason(request)
+            if not reason:
+                messages.error(request, "You must give a reason to delete this team.")
+                return redirect(f"/manage/teams/{team.pk}/edit/")
+            from .models import log_audit
+            log_audit(request.user, tenant, "delete", team, reason=reason)
             team.delete()
             messages.success(request, "Team deleted.")
             return redirect("/manage/?tab=teams")
@@ -354,6 +410,12 @@ def manage_modality_edit(request, pk):
             modality.save()
             messages.success(request, "Modality updated.")
         elif action == "delete":
+            reason = require_delete_reason(request)
+            if not reason:
+                messages.error(request, "You must give a reason to delete this modality.")
+                return redirect("manage_modality_edit", pk=modality.pk)
+            from .models import log_audit
+            log_audit(request.user, tenant, "delete", modality, reason=reason)
             modality.delete()
             messages.success(request, "Modality deleted.")
             return redirect("/manage/?tab=modalities")
@@ -365,7 +427,14 @@ def manage_modality_edit(request, pk):
                     always_included=request.POST.get("always_included") == "on",
                 )
         elif action == "delete_checklist_item":
-            ChecklistItemTemplate.objects.filter(id=request.POST.get("item_id"), tenant=tenant, modality=modality).delete()
+            reason = require_delete_reason(request)
+            item = ChecklistItemTemplate.objects.filter(id=request.POST.get("item_id"), tenant=tenant, modality=modality).first()
+            if not reason:
+                messages.error(request, "You must give a reason to delete this checklist item.")
+            elif item:
+                from .models import log_audit
+                log_audit(request.user, tenant, "delete", item, reason=reason)
+                item.delete()
         return redirect("manage_modality_edit", pk=modality.pk)
 
     return render(request, "tenants/manage_modality_edit.html", {
