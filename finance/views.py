@@ -1,9 +1,10 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from tenants.utils import get_user_tenant, can_view_financials, can_edit_financials
+from tenants.utils import get_user_tenant, can_view_financials, can_edit_financials, has_company_wide_scope
 from delivery.models import Milestone
 from .models import Invoice, InvoiceFollowUp, Payment
 
@@ -197,4 +198,94 @@ def invoice_detail(request, pk):
         "invoice": invoice,
         "payments": invoice.payments.order_by("-payment_date"),
         "follow_ups": invoice.follow_ups.all(),
+    })
+
+
+UNPAID_STATUSES = ["awaiting_approval", "approved", "issued", "part_paid", "overdue", "disputed"]
+INVOICED_TOTAL_STATUSES = ["awaiting_approval", "approved", "issued", "part_paid", "overdue", "disputed", "paid"]
+MONTHLY_TARGET = 175000
+
+
+@login_required
+def wip_dashboard(request):
+    """The company-wide WIP + Aged Debtor screen - deliberately
+    Director/Company Admin only, per the requirement that this level
+    of visibility across every project's financials is restricted
+    beyond the general Financials view/edit permission."""
+    if not has_company_wide_scope(request.user):
+        messages.error(request, "The WIP dashboard is restricted to Directors and Company Admin.")
+        return redirect("command_centre")
+
+    tenant = get_user_tenant(request)
+    today = timezone.localtime(timezone.now()).date()
+
+    # --- Aged debtor buckets ---
+    outstanding_invoices = Invoice.objects.filter(
+        tenant=tenant, status__in=UNPAID_STATUSES
+    ).select_related("organisation", "project")
+
+    buckets = {"current": [], "b1": [], "b2": [], "b3": []}
+    bucket_totals = {"current": 0, "b1": 0, "b2": 0, "b3": 0}
+    for inv in outstanding_invoices:
+        reference_date = inv.due_date or inv.invoice_date
+        days_overdue = (today - reference_date).days if reference_date else 0
+        if days_overdue <= 30:
+            key = "current"
+        elif days_overdue <= 60:
+            key = "b1"
+        elif days_overdue <= 90:
+            key = "b2"
+        else:
+            key = "b3"
+        buckets[key].append(inv)
+        bucket_totals[key] += inv.outstanding_amount
+
+    total_outstanding = sum(bucket_totals.values())
+
+    # --- This month's invoiced vs paid, against the monthly target ---
+    invoiced_this_month = Invoice.objects.filter(
+        tenant=tenant, status__in=INVOICED_TOTAL_STATUSES,
+        invoice_date__year=today.year, invoice_date__month=today.month,
+    ).aggregate(total=Sum("total"))["total"] or 0
+    paid_this_month = Payment.objects.filter(
+        tenant=tenant, payment_date__year=today.year, payment_date__month=today.month,
+    ).aggregate(total=Sum("amount"))["total"] or 0
+
+    # --- Per-project WIP: total fee vs invoiced vs outstanding ---
+    from delivery.models import Project
+    projects = Project.objects.filter(tenant=tenant).exclude(status__in=["archived", "cancelled"]).select_related(
+        "client_organisation", "original_proposal"
+    )
+    wip_rows = []
+    for p in projects:
+        total_fee = p.original_proposal.fee_amount if p.original_proposal_id else p.original_fee
+        invoiced = p.invoices.filter(status__in=INVOICED_TOTAL_STATUSES).aggregate(total=Sum("total"))["total"] or 0
+        outstanding = p.invoices.filter(status__in=UNPAID_STATUSES).aggregate(
+            total=Sum("total") - Sum("amount_paid")
+        )["total"] or 0
+        if total_fee or invoiced:
+            wip_rows.append({
+                "project": p,
+                "total_fee": total_fee or 0,
+                "invoiced": invoiced,
+                "outstanding": outstanding,
+                "percent_invoiced": round((invoiced / total_fee) * 100) if total_fee else None,
+            })
+    wip_rows.sort(key=lambda r: r["outstanding"], reverse=True)
+
+    return render(request, "finance/wip_dashboard.html", {
+        "active_nav": "wip",
+        "user_tenant": tenant,
+        "bucket_current": sorted(buckets["current"], key=lambda i: i.outstanding_amount, reverse=True),
+        "bucket_b1": sorted(buckets["b1"], key=lambda i: i.outstanding_amount, reverse=True),
+        "bucket_b2": sorted(buckets["b2"], key=lambda i: i.outstanding_amount, reverse=True),
+        "bucket_b3": sorted(buckets["b3"], key=lambda i: i.outstanding_amount, reverse=True),
+        "bucket_totals": bucket_totals,
+        "total_outstanding": total_outstanding,
+        "invoiced_this_month": invoiced_this_month,
+        "paid_this_month": paid_this_month,
+        "monthly_target": MONTHLY_TARGET,
+        "invoiced_target_pct": min(round((invoiced_this_month / MONTHLY_TARGET) * 100), 100) if MONTHLY_TARGET else 0,
+        "paid_target_pct": min(round((paid_this_month / MONTHLY_TARGET) * 100), 100) if MONTHLY_TARGET else 0,
+        "wip_rows": wip_rows,
     })

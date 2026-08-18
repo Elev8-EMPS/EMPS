@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}WIP &amp; Aged Debtors - EPMS{% endblock %}
+{% block header %}WIP &amp; Aged Debtors{% endblock %}
+{% block content %}
+
+<div class="kpis" style="margin-bottom:22px;">
+  <div class="kpi"><div class="num">${{ total_outstanding|floatformat:0 }}</div><div class="label">Total outstanding</div></div>
+  <div class="kpi"><div class="num">${{ invoiced_this_month|floatformat:0 }}</div><div class="label">Invoiced this month</div></div>
+  <div class="kpi"><div class="num">${{ paid_this_month|floatformat:0 }}</div><div class="label">Paid this month</div></div>
+  <div class="kpi"><div class="num">${{ monthly_target|floatformat:0 }}</div><div class="label">Monthly target</div></div>
+</div>
+
+<div class="section">
+  <h2>This month vs target</h2>
+  <div style="padding:18px;">
+    <div style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;"><span>Invoiced</span><span>${{ invoiced_this_month|floatformat:0 }} of ${{ monthly_target|floatformat:0 }} ({{ invoiced_target_pct }}%)</span></div>
+      <div style="background:#f3f4f6; border-radius:8px; height:16px; overflow:hidden;"><div style="width:{{ invoiced_target_pct }}%; background:var(--warn); height:100%;"></div></div>
+    </div>
+    <div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;"><span>Paid</span><span>${{ paid_this_month|floatformat:0 }} of ${{ monthly_target|floatformat:0 }} ({{ paid_target_pct }}%)</span></div>
+      <div style="background:#f3f4f6; border-radius:8px; height:16px; overflow:hidden;"><div style="width:{{ paid_target_pct }}%; background:var(--ok); height:100%;"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Aged debtors</h2>
+  <div style="padding:18px; display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; text-align:center;">
+    <div>
+      <div style="font-size:22px; font-weight:700;">${{ bucket_totals.current|floatformat:0 }}</div>
+      <div style="font-size:12.5px; color:var(--muted);">Current - 1 month</div>
+    </div>
+    <div>
+      <div style="font-size:22px; font-weight:700;">${{ bucket_totals.b1|floatformat:0 }}</div>
+      <div style="font-size:12.5px; color:var(--muted);">1 - 2 months</div>
+    </div>
+    <div style="background:#fef3c7; border-radius:8px; padding:8px 0;">
+      <div style="font-size:22px; font-weight:700; color:var(--warn);">${{ bucket_totals.b2|floatformat:0 }}</div>
+      <div style="font-size:12.5px; color:var(--muted);">2 - 3 months</div>
+    </div>
+    <div style="background:#fee2e2; border-radius:8px; padding:8px 0;">
+      <div style="font-size:22px; font-weight:700; color:var(--danger);">${{ bucket_totals.b3|floatformat:0 }}</div>
+      <div style="font-size:12.5px; color:var(--muted);">3+ months</div>
+    </div>
+  </div>
+
+  {% if bucket_b3 %}
+  <div style="padding:0 18px 18px;">
+    <h3 style="font-size:13.5px; color:var(--danger); margin-bottom:8px;">3+ months overdue</h3>
+    <table class="list">
+      <tr><th>Invoice</th><th>Client</th><th>Project</th><th>Due date</th><th>Outstanding</th></tr>
+      {% for i in bucket_b3 %}
+      <tr><td><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }}</a></td><td>{{ i.organisation.legal_name }}</td><td>{{ i.project.project_number|default:"—" }}</td><td>{{ i.due_date|default:"—" }}</td><td><span class="tag danger">${{ i.outstanding_amount }}</span></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if bucket_b2 %}
+  <div style="padding:0 18px 18px;">
+    <h3 style="font-size:13.5px; color:var(--warn); margin-bottom:8px;">2 - 3 months overdue</h3>
+    <table class="list">
+      <tr><th>Invoice</th><th>Client</th><th>Project</th><th>Due date</th><th>Outstanding</th></tr>
+      {% for i in bucket_b2 %}
+      <tr><td><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }}</a></td><td>{{ i.organisation.legal_name }}</td><td>{{ i.project.project_number|default:"—" }}</td><td>{{ i.due_date|default:"—" }}</td><td><span class="tag warn">${{ i.outstanding_amount }}</span></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if bucket_b1 %}
+  <div style="padding:0 18px 18px;">
+    <h3 style="font-size:13.5px; color:var(--muted); margin-bottom:8px;">1 - 2 months overdue</h3>
+    <table class="list">
+      <tr><th>Invoice</th><th>Client</th><th>Project</th><th>Due date</th><th>Outstanding</th></tr>
+      {% for i in bucket_b1 %}
+      <tr><td><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }}</a></td><td>{{ i.organisation.legal_name }}</td><td>{{ i.project.project_number|default:"—" }}</td><td>{{ i.due_date|default:"—" }}</td><td>${{ i.outstanding_amount }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if bucket_current %}
+  <div style="padding:0 18px 18px;">
+    <h3 style="font-size:13.5px; color:var(--muted); margin-bottom:8px;">Current - 1 month</h3>
+    <table class="list">
+      <tr><th>Invoice</th><th>Client</th><th>Project</th><th>Due date</th><th>Outstanding</th></tr>
+      {% for i in bucket_current %}
+      <tr><td><a href="/invoices/{{ i.pk }}/">{{ i.invoice_number }}</a></td><td>{{ i.organisation.legal_name }}</td><td>{{ i.project.project_number|default:"—" }}</td><td>{{ i.due_date|default:"—" }}</td><td>${{ i.outstanding_amount }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if not bucket_current and not bucket_b1 and not bucket_b2 and not bucket_b3 %}
+  <div class="empty" style="padding:18px;">Nothing outstanding right now.</div>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h2>Work in progress by project</h2>
+  {% if wip_rows %}
+  <table class="list">
+    <tr><th>Project</th><th>Client</th><th>Total fee</th><th>Invoiced</th><th>% invoiced</th><th>Outstanding</th><th></th></tr>
+    {% for row in wip_rows %}
+    <tr>
+      <td>{{ row.project.project_number }} - {{ row.project.name }}</td>
+      <td>{{ row.project.client_organisation.legal_name|default:"—" }}</td>
+      <td>{% if row.total_fee %}${{ row.total_fee }}{% else %}—{% endif %}</td>
+      <td>${{ row.invoiced }}</td>
+      <td>{% if row.percent_invoiced is not None %}{{ row.percent_invoiced }}%{% else %}—{% endif %}</td>
+      <td>{% if row.outstanding %}<span class="tag warn">${{ row.outstanding }}</span>{% else %}${{ row.outstanding }}{% endif %}</td>
+      <td><a href="/projects/{{ row.project.pk }}/?tab=finance">View invoices &rarr;</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="empty">No projects with fee or invoice activity yet.</div>{% endif %}
+</div>
+
+{% endblock %}

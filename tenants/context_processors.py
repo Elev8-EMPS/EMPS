@@ -24,6 +24,7 @@ def todo_badge(request):
             "my_open_todos_count": get_open_todo_count(request.user),
             "can_view_financials": can_view_financials(request.user),
             "can_manage_org": can_manage_company(request.user),
+            "has_company_wide_scope": has_company_wide_scope(request.user),
             "can_view_proposals": proposals_ok,
             "can_view_fee_amounts": can_view_fee_amounts(request.user),
             # Nav link stays visible in 'responsible_for' mode too, since
@@ -35,6 +36,7 @@ def todo_badge(request):
         "my_open_todos_count": 0,
         "can_view_financials": False,
         "can_manage_org": False,
+        "has_company_wide_scope": False,
         "can_view_proposals": False,
         "can_view_fee_amounts": False,
         "show_proposals_nav": False,

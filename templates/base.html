@@ -81,6 +81,9 @@
     {% if can_view_financials %}
     <a href="/invoices/" class="{% if active_nav == 'finance' %}active{% endif %}">Finance</a>
     {% endif %}
+    {% if has_company_wide_scope %}
+    <a href="/finance/wip/" class="{% if active_nav == 'wip' %}active{% endif %}">WIP &amp; Debtors</a>
+    {% endif %}
     {% if can_manage_org %}
     <a href="/manage/" class="{% if active_nav == 'manage' %}active{% endif %}">Manage</a>
     {% endif %}
