@@ -254,7 +254,14 @@
   <div style="padding:18px;">
     <div class="field-row"><div class="k">Client</div><div><a href="/organisations/{{ project.client_organisation.pk }}/">{{ project.client_organisation.legal_name }}</a></div></div>
     <div class="field-row"><div class="k">Billing entity</div><div>{% if project.billing_organisation %}<a href="/organisations/{{ project.billing_organisation.pk }}/">{{ project.billing_organisation.legal_name }}</a>{% else %}Same as client{% endif %}</div></div>
-    {% if project.original_proposal %}<div class="field-row"><div class="k">Requested via</div><div><a href="/proposals/{{ project.original_proposal.pk }}/">{{ project.original_proposal.proposal_number }}</a> ({{ project.original_proposal.organisation.legal_name }})</div></div>{% endif %}
+    <div class="field-row"><div class="k">Primary contact</div><div>{% if project.primary_contact %}<a href="/contacts/{{ project.primary_contact.pk }}/">{{ project.primary_contact.first_name }} {{ project.primary_contact.last_name }}</a>{% else %}—{% endif %}</div></div>
+    {% if project.original_proposal %}
+      {% if can_view_proposals %}
+      <div class="field-row"><div class="k">Requested via</div><div><a href="/proposals/{{ project.original_proposal.pk }}/">{{ project.original_proposal.proposal_number }}</a> ({{ project.original_proposal.organisation.legal_name }})</div></div>
+      {% else %}
+      <div class="field-row"><div class="k">Requested via</div><div>Not visible to your role</div></div>
+      {% endif %}
+    {% endif %}
   </div>
 </div>
 
