@@ -253,7 +253,7 @@ def wip_dashboard(request):
 
     # --- Per-project WIP: total fee vs invoiced vs outstanding ---
     from delivery.models import Project
-    projects = Project.objects.filter(tenant=tenant).exclude(status__in=["archived", "cancelled"]).select_related(
+    projects = Project.objects.filter(tenant=tenant, status="active").select_related(
         "client_organisation", "original_proposal"
     )
     wip_rows = []
@@ -263,14 +263,13 @@ def wip_dashboard(request):
         outstanding = p.invoices.filter(status__in=UNPAID_STATUSES).aggregate(
             total=Sum("total") - Sum("amount_paid")
         )["total"] or 0
-        if total_fee or invoiced:
-            wip_rows.append({
-                "project": p,
-                "total_fee": total_fee or 0,
-                "invoiced": invoiced,
-                "outstanding": outstanding,
-                "percent_invoiced": round((invoiced / total_fee) * 100) if total_fee else None,
-            })
+        wip_rows.append({
+            "project": p,
+            "total_fee": total_fee or 0,
+            "invoiced": invoiced,
+            "outstanding": outstanding,
+            "percent_invoiced": round((invoiced / total_fee) * 100) if total_fee else None,
+        })
     wip_rows.sort(key=lambda r: r["outstanding"], reverse=True)
 
     return render(request, "finance/wip_dashboard.html", {

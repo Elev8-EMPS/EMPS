@@ -99,7 +99,7 @@
 </div>
 
 <div class="section">
-  <h2>Work in progress by project</h2>
+  <h2>Work in progress - every active project</h2>
   {% if wip_rows %}
   <table class="list">
     <tr><th>Project</th><th>Client</th><th>Total fee</th><th>Invoiced</th><th>% invoiced</th><th>Outstanding</th><th></th></tr>
@@ -107,7 +107,7 @@
     <tr>
       <td>{{ row.project.project_number }} - {{ row.project.name }}</td>
       <td>{{ row.project.client_organisation.legal_name|default:"—" }}</td>
-      <td>{% if row.total_fee %}${{ row.total_fee }}{% else %}—{% endif %}</td>
+      <td>{% if row.total_fee %}${{ row.total_fee }}{% else %}<span class="tag warn">No fee set</span>{% endif %}</td>
       <td>${{ row.invoiced }}</td>
       <td>{% if row.percent_invoiced is not None %}{{ row.percent_invoiced }}%{% else %}—{% endif %}</td>
       <td>{% if row.outstanding %}<span class="tag warn">${{ row.outstanding }}</span>{% else %}${{ row.outstanding }}{% endif %}</td>
@@ -115,7 +115,7 @@
     </tr>
     {% endfor %}
   </table>
-  {% else %}<div class="empty">No projects with fee or invoice activity yet.</div>{% endif %}
+  {% else %}<div class="empty">No active projects yet.</div>{% endif %}
 </div>
 
 {% endblock %}
