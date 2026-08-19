@@ -8,12 +8,13 @@ from django.utils import timezone
 import datetime
 
 from tenants.models import Team, Modality, ChecklistItemTemplate, DeadlineCategory
-from tenants.utils import get_user_tenant, has_company_wide_scope, can_view_financials, can_edit_financials, can_view_document, visible_document_filter, require_delete_reason, diff_and_log_update
+from tenants.utils import get_user_tenant, has_company_wide_scope, can_view_financials, can_edit_financials, can_view_document, visible_document_filter, require_delete_reason, diff_and_log_update, can_edit_proposals
 from .models import Project, Milestone, Task, Document, TaskComment, ProjectChecklistItem, ProjectStakeholder, ProjectScopeAddition
 
 PROJECT_EDITABLE_FIELDS = [
     "name", "address", "client_organisation_id", "billing_organisation_id", "primary_contact_id",
     "project_manager_id", "director_id", "status", "start_date", "target_completion_date", "completion_date",
+    "original_proposal_id",
 ]
 
 
@@ -242,6 +243,8 @@ def project_detail(request, pk):
         project.start_date = request.POST.get("start_date") or None
         project.target_completion_date = request.POST.get("target_completion_date") or None
         project.completion_date = request.POST.get("completion_date") or None
+        if can_edit_proposals(request.user):
+            project.original_proposal_id = request.POST.get("original_proposal") or None
         project.save()
 
         changed = diff_and_log_update(request.user, tenant, project, before, reason)
@@ -348,16 +351,20 @@ def project_detail(request, pk):
         from crm.models import Contact
         available_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name") if tenant else Contact.objects.none()
 
-    edit_organisations = edit_contacts = edit_users = None
+    edit_organisations = edit_contacts = edit_users = edit_proposals = None
     can_edit_core = False
+    can_link_proposal = False
     if tab == "edit":
         can_edit_core = has_company_wide_scope(request.user) or request.user.id in (
             project.project_manager_id, project.director_id
         )
-        from crm.models import Organisation, Contact
+        can_link_proposal = can_edit_proposals(request.user)
+        from crm.models import Organisation, Contact, Proposal
         edit_organisations = Organisation.objects.filter(tenant=tenant).order_by("legal_name")
         edit_contacts = Contact.objects.filter(tenant=tenant).order_by("first_name")
         edit_users = User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username")
+        if can_link_proposal:
+            edit_proposals = Proposal.objects.filter(tenant=tenant).select_related("organisation").order_by("-issue_date")
 
     return render(request, "delivery/project_detail.html", {
         "active_nav": "projects",
@@ -392,7 +399,9 @@ def project_detail(request, pk):
         "edit_organisations": edit_organisations,
         "edit_contacts": edit_contacts,
         "edit_users": edit_users,
+        "edit_proposals": edit_proposals,
         "can_edit_core": can_edit_core,
+        "can_link_proposal": can_link_proposal,
     })
 
 

@@ -449,6 +449,15 @@ function toggleStakeholderExternalFields(select) {
           {% for value, label in project.STATUS_CHOICES %}<option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       </div>
+      {% if can_link_proposal %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Linked Fee Proposal <span style="font-weight:400;">(stopgap until the full FP workflow is built - controls what shows as "Requested via" on the People tab)</span></label>
+        <select name="original_proposal" style="width:100%; max-width:420px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— None —</option>
+          {% for p in edit_proposals %}<option value="{{ p.pk }}" {% if project.original_proposal_id == p.pk %}selected{% endif %}>{{ p.proposal_number }} - {{ p.organisation.legal_name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
         <div>
           <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Start date</label>
