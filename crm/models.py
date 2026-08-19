@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 
-from tenants.models import TenantModel
+from tenants.models import TenantModel, Modality
 
 
 def add_working_days(start_date, n):
@@ -140,6 +140,54 @@ class Proposal(TenantModel):
         "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="approved_proposals"
     )
 
+    # --- Structured Fee Proposal generator fields (cover page / fees / T&Cs) ---
+    project_title = models.CharField(
+        max_length=255, blank=True, help_text="e.g. 'Proposed mixed use development' - shown on the cover page.",
+    )
+    project_address = models.TextField(blank=True)
+    enquiry_received_date = models.DateField(
+        null=True, blank=True, help_text="Feeds the T&C clause referencing when the enquiry/info was received.",
+    )
+    is_individual_client = models.BooleanField(
+        default=False, help_text="If ticked, the 'Client:' line is dropped from the cover page - use for a person, not a company.",
+    )
+    project_budget = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True,
+        help_text="The project construction budget referenced in the standard T&Cs (distinct from the fee amount).",
+    )
+    BUDGET_MODE_CHOICES = [("lump_sum", "One combined budget"), ("per_modality", "Split by modality")]
+    budget_mode = models.CharField(max_length=20, choices=BUDGET_MODE_CHOICES, default="lump_sum")
+    modalities = models.ManyToManyField(
+        Modality, blank=True, related_name="proposals",
+        help_text="Which disciplines this proposal covers - drives which Our Scope / Exclusions sections are included.",
+    )
+    deselected_scope_items = models.ManyToManyField(
+        "FPScopeItem", blank=True, related_name="deselected_on_proposals",
+        help_text="Items that WOULD be included by the selected modalities, but have been individually unticked.",
+    )
+    deselected_exclusion_items = models.ManyToManyField(
+        "FPExclusionItem", blank=True, related_name="deselected_on_proposals",
+    )
+    included_term_clauses = models.ManyToManyField(
+        "FPTermClause", blank=True, related_name="included_on_proposals",
+        help_text="Which of the standard T&C clauses appear on this proposal.",
+    )
+    selected_payment_term = models.ForeignKey(
+        "FPPaymentTermOption", null=True, blank=True, on_delete=models.SET_NULL, related_name="proposals",
+    )
+    payment_term_override_text = models.TextField(
+        blank=True, help_text="If set, overrides the selected payment term's default wording/percentages for this proposal.",
+    )
+    CA_FEE_TYPE_CHOICES = [("fixed", "Fixed Fee"), ("hourly", "Hourly Rates")]
+    contract_administration_included = models.BooleanField(default=False)
+    ca_fee_type = models.CharField(max_length=10, choices=CA_FEE_TYPE_CHOICES, blank=True)
+    ca_fixed_fee = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    novation_included = models.BooleanField(default=False)
+    signing_director = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="signed_proposals",
+        help_text="Whose name/signature block appears at the end of the T&Cs.",
+    )
+
     def __str__(self):
         return self.proposal_number
 
@@ -243,3 +291,94 @@ class Communication(TenantModel):
 
     def __str__(self):
         return self.subject or f"{self.get_communication_type_display()} on {self.occurred_at:%Y-%m-%d}"
+
+
+# --- Fee Proposal content library ---
+# Reusable, tenant-editable building blocks the Fee Proposal generator
+# assembles a proposal from. Seeded once from the real template, then
+# reviewed/corrected via Admin - not meant to be re-seeded blindly.
+
+class FPScopeItem(TenantModel):
+    """One selectable 'Our Scope' bullet under a modality. modality=None
+    means it's a 'General' item that applies regardless of which
+    disciplines are selected."""
+    modality = models.ForeignKey(Modality, null=True, blank=True, on_delete=models.CASCADE, related_name="fp_scope_items")
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["modality_id", "order"]
+
+    def __str__(self):
+        return self.text[:80]
+
+
+class FPExclusionItem(TenantModel):
+    """One selectable Exclusions bullet. Same modality=None convention
+    as FPScopeItem; a modality of None with is_miscellaneous=True is
+    the 'Miscellaneous' catch-all group rather than 'General'."""
+    modality = models.ForeignKey(Modality, null=True, blank=True, on_delete=models.CASCADE, related_name="fp_exclusion_items")
+    is_miscellaneous = models.BooleanField(default=False)
+    is_contract_administration = models.BooleanField(default=False)
+    is_novation = models.BooleanField(default=False)
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["modality_id", "order"]
+
+    def __str__(self):
+        return self.text[:80]
+
+
+class FPTermClause(TenantModel):
+    """One numbered Terms & Conditions clause. `mandatory` clauses are
+    always included and can't be unticked when building a proposal -
+    starts False for every clause until reviewed and marked."""
+    number = models.PositiveIntegerField()
+    text = models.TextField()
+    mandatory = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["number"]
+
+    def __str__(self):
+        return f"{self.number}. {self.text[:70]}"
+
+
+class FPPaymentTermOption(TenantModel):
+    """One of the selectable Invoice & Payment Terms options (e.g.
+    '25% Deposit shall be paid prior to commencement...'). The
+    percentage is editable per-proposal via Proposal.payment_term_override_text."""
+    text = models.TextField()
+    default_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.text[:80]
+
+
+class ProposalFeeLine(TenantModel):
+    """One row of the Project Fees table: a dollar amount for one
+    stage, either for the whole project (modality=None, used when
+    Proposal.budget_mode='lump_sum') or for one specific modality
+    (used when budget_mode='per_modality')."""
+    STAGE_CHOICES = [
+        ("site_inspection", "Site Inspection & Report"),
+        ("design_development", "Design Development"),
+        ("contract_design_documentation", "Contract Design & Documentation"),
+    ]
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="fee_lines")
+    stage = models.CharField(max_length=40, choices=STAGE_CHOICES)
+    modality = models.ForeignKey(Modality, null=True, blank=True, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    included = models.BooleanField(default=True, help_text="Whether this stage appears on the proposal at all.")
+
+    class Meta:
+        ordering = ["stage", "modality_id"]
+
+    def __str__(self):
+        return f"{self.get_stage_display()} - {self.modality or 'Combined'}: ${self.amount}"

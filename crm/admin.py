@@ -1,7 +1,10 @@
 from django.contrib import admin
 
 from tenants.admin_mixins import AuditedAdminMixin, ExportCsvMixin, TenantScopedAdmin
-from .models import Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp
+from .models import (
+    Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp,
+    FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
+)
 
 
 @admin.register(Organisation)
@@ -52,3 +55,42 @@ class CommunicationAdmin(AuditedAdminMixin, TenantScopedAdmin, ExportCsvMixin, a
 class ProposalFollowUpAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("proposal", "follow_up_number", "due_date", "status", "outcome", "tenant")
     list_filter = ("status", "outcome", "tenant")
+
+
+@admin.register(FPScopeItem)
+class FPScopeItemAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("text", "modality", "order", "tenant")
+    list_filter = ("modality", "tenant")
+    list_editable = ("order",)
+    search_fields = ("text",)
+    ordering = ("modality__name", "order")
+
+
+@admin.register(FPExclusionItem)
+class FPExclusionItemAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("text", "modality", "is_miscellaneous", "is_contract_administration", "is_novation", "order", "tenant")
+    list_filter = ("modality", "is_miscellaneous", "is_contract_administration", "is_novation", "tenant")
+    list_editable = ("order",)
+    search_fields = ("text",)
+
+
+@admin.register(FPTermClause)
+class FPTermClauseAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("number", "text", "mandatory", "tenant")
+    list_editable = ("mandatory",)
+    list_filter = ("mandatory", "tenant")
+    search_fields = ("text",)
+    ordering = ("number",)
+
+
+@admin.register(FPPaymentTermOption)
+class FPPaymentTermOptionAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("text", "default_percentage", "order", "tenant")
+    list_editable = ("order",)
+    ordering = ("order",)
+
+
+@admin.register(ProposalFeeLine)
+class ProposalFeeLineAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "stage", "modality", "amount", "included", "tenant")
+    list_filter = ("stage", "modality", "included", "tenant")
