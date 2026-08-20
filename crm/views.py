@@ -11,6 +11,7 @@ from tenants.models import Modality, log_audit
 from .models import (
     Organisation, Proposal, Enquiry, Communication, Contact,
     FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
+    ProposalPaymentTermSelection, ProposalScopeItemOverride, ProposalExclusionItemOverride,
 )
 
 ORGANISATION_EDITABLE_FIELDS = [
@@ -286,9 +287,12 @@ def proposal_builder(request, pk):
 
         if action == "save_details":
             before = {f: getattr(proposal, f) for f in [
-                "project_title", "project_address", "contact_id", "is_individual_client",
+                "organisation_id", "project_title", "project_address", "contact_id", "is_individual_client",
                 "enquiry_received_date", "project_budget", "budget_mode", "signing_director_id",
             ]}
+            new_org_id = request.POST.get("organisation")
+            if new_org_id:
+                proposal.organisation_id = new_org_id
             proposal.project_title = request.POST.get("project_title", "").strip()
             proposal.project_address = request.POST.get("project_address", "").strip()
             proposal.contact_id = request.POST.get("contact") or None
@@ -315,6 +319,16 @@ def proposal_builder(request, pk):
                 proposal.deselected_scope_items.remove(*to_include)
             if to_exclude:
                 proposal.deselected_scope_items.add(*to_exclude)
+
+            for item in relevant_items:
+                override_text = request.POST.get(f"override_scope_{item.id}", "").strip()
+                if override_text and override_text != item.text:
+                    ProposalScopeItemOverride.objects.update_or_create(
+                        tenant=tenant, proposal=proposal, scope_item=item, defaults={"custom_text": override_text},
+                    )
+                else:
+                    ProposalScopeItemOverride.objects.filter(proposal=proposal, scope_item=item).delete()
+
             log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Scope tab",
                       details=f"Modalities: {new_modality_ids}")
             messages.success(request, "Scope saved.")
@@ -335,6 +349,16 @@ def proposal_builder(request, pk):
                 proposal.deselected_exclusion_items.remove(*to_include)
             if to_exclude:
                 proposal.deselected_exclusion_items.add(*to_exclude)
+
+            for item in relevant_items:
+                override_text = request.POST.get(f"override_exclusion_{item.id}", "").strip()
+                if override_text and override_text != item.text:
+                    ProposalExclusionItemOverride.objects.update_or_create(
+                        tenant=tenant, proposal=proposal, exclusion_item=item, defaults={"custom_text": override_text},
+                    )
+                else:
+                    ProposalExclusionItemOverride.objects.filter(proposal=proposal, exclusion_item=item).delete()
+
             log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Exclusions tab")
             messages.success(request, "Exclusions saved.")
             return redirect(f"/proposals/{proposal.pk}/builder/?tab=exclusions")
@@ -372,14 +396,27 @@ def proposal_builder(request, pk):
             checked_clause_ids = set(int(x) for x in request.POST.getlist("term_clause"))
             mandatory_ids = set(FPTermClause.objects.filter(tenant=tenant, mandatory=True).values_list("id", flat=True))
             proposal.included_term_clauses.set(checked_clause_ids | mandatory_ids)
-            proposal.selected_payment_term_id = request.POST.get("selected_payment_term") or None
             proposal.payment_term_override_text = request.POST.get("payment_term_override_text", "").strip()
-            proposal.save(update_fields=["selected_payment_term", "payment_term_override_text"])
+            proposal.save(update_fields=["payment_term_override_text"])
+
+            ProposalPaymentTermSelection.objects.filter(proposal=proposal).delete()
+            selected_option_ids = request.POST.getlist("payment_term_option")
+            for i, option_id in enumerate(selected_option_ids):
+                pct = request.POST.get(f"payment_term_pct_{option_id}", "").strip()
+                ProposalPaymentTermSelection.objects.create(
+                    tenant=tenant, proposal=proposal, option_id=option_id,
+                    percentage=pct or None, order=i,
+                )
+
             log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Terms tab")
             messages.success(request, "Terms & Conditions saved.")
             return redirect(f"/proposals/{proposal.pk}/builder/?tab=terms")
 
     # ---------------- GET context per tab ----------------
+    fp_modalities = Modality.objects.filter(
+        tenant=tenant, fp_scope_items__isnull=False
+    ).distinct().order_by("name")
+
     context = {
         "active_nav": "proposals",
         "user_tenant": tenant,
@@ -387,25 +424,30 @@ def proposal_builder(request, pk):
         "tab": tab,
         "selected_modality_ids": selected_modality_ids,
         "all_modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "fp_modalities": fp_modalities,
+        "all_organisations": Organisation.objects.filter(tenant=tenant).order_by("legal_name"),
         "all_contacts": proposal.organisation.contacts.all().order_by("first_name"),
         "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
     }
 
     if tab == "scope":
         deselected_ids = set(proposal.deselected_scope_items.values_list("id", flat=True))
+        overrides = {o.scope_item_id: o.custom_text for o in proposal.scope_item_overrides.all()}
         general_items = FPScopeItem.objects.filter(tenant=tenant, modality__isnull=True).order_by("order")
         modality_items = {}
-        for m in context["all_modalities"]:
+        for m in fp_modalities:
             if m.id in selected_modality_ids:
                 modality_items[m] = FPScopeItem.objects.filter(tenant=tenant, modality=m).order_by("order")
         context.update({
             "general_items": general_items,
             "modality_items": modality_items,
             "deselected_ids": deselected_ids,
+            "overrides": overrides,
         })
 
     if tab == "exclusions":
         deselected_ids = set(proposal.deselected_exclusion_items.values_list("id", flat=True))
+        overrides = {o.exclusion_item_id: o.custom_text for o in proposal.exclusion_item_overrides.all()}
         general_items = FPExclusionItem.objects.filter(
             tenant=tenant, modality__isnull=True, is_miscellaneous=False,
             is_contract_administration=False, is_novation=False,
@@ -414,7 +456,7 @@ def proposal_builder(request, pk):
         ca_items = FPExclusionItem.objects.filter(tenant=tenant, is_contract_administration=True).order_by("order")
         novation_items = FPExclusionItem.objects.filter(tenant=tenant, is_novation=True).order_by("order")
         modality_items = {}
-        for m in context["all_modalities"]:
+        for m in fp_modalities:
             if m.id in selected_modality_ids:
                 items = FPExclusionItem.objects.filter(tenant=tenant, modality=m).order_by("order")
                 if items.exists():
@@ -423,6 +465,7 @@ def proposal_builder(request, pk):
             "general_items": general_items, "misc_items": misc_items,
             "ca_items": ca_items, "novation_items": novation_items,
             "modality_items": modality_items, "deselected_ids": deselected_ids,
+            "overrides": overrides,
         })
 
     if tab == 'fees':
@@ -437,15 +480,22 @@ def proposal_builder(request, pk):
             "stage_choices": ProposalFeeLine.STAGE_CHOICES,
             "existing_lines_lump": existing_lines_lump,
             "existing_lines_per_modality": existing_lines_per_modality,
-            "selected_modalities": [m for m in context["all_modalities"] if m.id in selected_modality_ids],
+            "selected_modalities": [m for m in fp_modalities if m.id in selected_modality_ids],
         })
 
     if tab == "terms":
         included_ids = set(proposal.included_term_clauses.values_list("id", flat=True))
+        existing_selections = list(proposal.payment_term_selections.select_related("option").order_by("order"))
+        selected_option_ids = {s.option_id for s in existing_selections}
+        selection_pct = {s.option_id: s.percentage for s in existing_selections}
+        total_pct = sum((s.percentage if s.percentage is not None else (s.option.default_percentage or 0)) for s in existing_selections)
         context.update({
             "all_clauses": FPTermClause.objects.filter(tenant=tenant).order_by("number"),
             "included_ids": included_ids,
             "all_payment_terms": FPPaymentTermOption.objects.filter(tenant=tenant).order_by("order"),
+            "selected_option_ids": selected_option_ids,
+            "selection_pct": selection_pct,
+            "total_pct": total_pct,
         })
 
     return render(request, "crm/proposal_builder.html", context)

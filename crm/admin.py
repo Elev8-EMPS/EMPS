@@ -4,6 +4,7 @@ from tenants.admin_mixins import AuditedAdminMixin, ExportCsvMixin, TenantScoped
 from .models import (
     Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp,
     FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
+    ProposalPaymentTermSelection, ProposalScopeItemOverride, ProposalExclusionItemOverride,
 )
 
 
@@ -94,3 +95,18 @@ class FPPaymentTermOptionAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.Model
 class ProposalFeeLineAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("proposal", "stage", "modality", "amount", "included", "tenant")
     list_filter = ("stage", "modality", "included", "tenant")
+
+
+@admin.register(ProposalPaymentTermSelection)
+class ProposalPaymentTermSelectionAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "option", "percentage", "order", "tenant")
+
+
+@admin.register(ProposalScopeItemOverride)
+class ProposalScopeItemOverrideAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "scope_item", "custom_text", "tenant")
+
+
+@admin.register(ProposalExclusionItemOverride)
+class ProposalExclusionItemOverrideAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "exclusion_item", "custom_text", "tenant")

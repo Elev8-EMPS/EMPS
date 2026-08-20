@@ -172,11 +172,8 @@ class Proposal(TenantModel):
         "FPTermClause", blank=True, related_name="included_on_proposals",
         help_text="Which of the standard T&C clauses appear on this proposal.",
     )
-    selected_payment_term = models.ForeignKey(
-        "FPPaymentTermOption", null=True, blank=True, on_delete=models.SET_NULL, related_name="proposals",
-    )
     payment_term_override_text = models.TextField(
-        blank=True, help_text="If set, overrides the selected payment term's default wording/percentages for this proposal.",
+        blank=True, help_text="Any additional payment terms note, on top of the selected options below.",
     )
     CA_FEE_TYPE_CHOICES = [("fixed", "Fixed Fee"), ("hourly", "Hourly Rates")]
     contract_administration_included = models.BooleanField(default=False)
@@ -382,3 +379,53 @@ class ProposalFeeLine(TenantModel):
 
     def __str__(self):
         return f"{self.get_stage_display()} - {self.modality or 'Combined'}: ${self.amount}"
+
+
+class ProposalPaymentTermSelection(TenantModel):
+    """One payment-term option included on a proposal's schedule, e.g.
+    '25% Deposit...' - a proposal typically combines several of these
+    (25% + 50% + 25% etc.) rather than picking just one, with each
+    percentage editable per-proposal."""
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="payment_term_selections")
+    option = models.ForeignKey(FPPaymentTermOption, on_delete=models.CASCADE)
+    percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="Overrides the option's default percentage for this proposal - leave blank to use the default.",
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        pct = self.percentage if self.percentage is not None else self.option.default_percentage
+        return f"{pct}% - {self.option.text[:60]}"
+
+
+class ProposalScopeItemOverride(TenantModel):
+    """Custom wording for one FPScopeItem, on one proposal only - the
+    master library text is untouched, this just overrides the display
+    text when this specific proposal is generated."""
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="scope_item_overrides")
+    scope_item = models.ForeignKey(FPScopeItem, on_delete=models.CASCADE)
+    custom_text = models.TextField()
+
+    class Meta:
+        unique_together = [("proposal", "scope_item")]
+
+    def __str__(self):
+        return self.custom_text[:80]
+
+
+class ProposalExclusionItemOverride(TenantModel):
+    """Custom wording for one FPExclusionItem, on one proposal only -
+    same pattern as ProposalScopeItemOverride."""
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="exclusion_item_overrides")
+    exclusion_item = models.ForeignKey(FPExclusionItem, on_delete=models.CASCADE)
+    custom_text = models.TextField()
+
+    class Meta:
+        unique_together = [("proposal", "exclusion_item")]
+
+    def __str__(self):
+        return self.custom_text[:80]

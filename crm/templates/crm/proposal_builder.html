@@ -28,6 +28,12 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_details">
       <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client organisation <span style="color:var(--danger);">*</span></label>
+        <select name="organisation" required style="width:100%; max-width:400px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          {% for o in all_organisations %}<option value="{{ o.pk }}" {% if proposal.organisation_id == o.pk %}selected{% endif %}>{{ o.legal_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
         <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project title <span style="font-weight:400;">(e.g. "Proposed mixed use development" - shown on the cover page)</span></label>
         <input type="text" name="project_title" value="{{ proposal.project_title }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
       </div>
@@ -72,7 +78,7 @@
         <label style="display:block; font-size:14px;"><input type="radio" name="budget_mode" value="per_modality" {% if proposal.budget_mode == 'per_modality' %}checked{% endif %}> Split budget by modality</label>
         <p style="font-size:12px; color:var(--muted); margin-top:6px;">This controls how the Fees tab is laid out - change it here first, then go to the Fees tab.</p>
       </div>
-      <button type="submit" class="btn">Save Details</button>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600;">Save Details</button>
     </form>
   </div>
 </div>
@@ -85,39 +91,59 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_scope">
       <h3 style="margin-bottom:10px;">Modalities included in this proposal</h3>
-      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:24px;">
-        {% for m in all_modalities %}
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:8px;">
+        {% for m in fp_modalities %}
         <label style="display:flex; align-items:center; gap:8px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px;">
           <input type="checkbox" name="modalities" value="{{ m.pk }}" {% if m.pk in selected_modality_ids %}checked{% endif %}> {{ m.name }}
         </label>
         {% endfor %}
       </div>
-      <p style="font-size:12.5px; color:var(--muted); margin-bottom:16px;">Tick the modalities above, click Save, then come back to this tab to tick individual scope items for each one.</p>
-      <button type="submit" class="btn" style="margin-bottom:24px;">Save modality selection</button>
+      <p style="font-size:12.5px; color:var(--muted); margin-bottom:16px;">Only disciplines with Fee Proposal content are listed here. Tick the ones that apply, click Save, then come back to tick individual scope items for each one.</p>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600; margin-bottom:24px;">Save modality selection</button>
 
-      <h3 style="margin-bottom:10px;">General <span style="font-weight:400; color:var(--muted); font-size:13px;">(applies regardless of which modalities are selected)</span></h3>
-      <div style="margin-bottom:24px;">
-        {% for item in general_items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
-        {% endfor %}
+      <div class="item-group">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h3 style="margin:0;">General <span style="font-weight:400; color:var(--muted); font-size:13px;">(applies regardless of which modalities are selected)</span></h3>
+          <span style="font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></span>
+        </div>
+        <div style="margin-bottom:24px;">
+          {% for item in general_items %}
+          <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+            <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+              <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+              <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+              <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+            </label>
+            <textarea name="override_scope_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+          </div>
+          {% endfor %}
+        </div>
       </div>
 
       {% for modality, items in modality_items.items %}
-      <h3 style="margin-bottom:10px;">{{ modality.name }}</h3>
-      <div style="margin-bottom:24px;">
-        {% for item in items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
-        {% endfor %}
+      <div class="item-group">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h3 style="margin:0;">{{ modality.name }}</h3>
+          <span style="font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></span>
+        </div>
+        <div style="margin-bottom:24px;">
+          {% for item in items %}
+          <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+            <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+              <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+              <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+              <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+            </label>
+            <textarea name="override_scope_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+          </div>
+          {% endfor %}
+        </div>
       </div>
       {% empty %}
-      {% if selected_modality_ids %}{% else %}<div class="empty">Select at least one modality above and save, then its scope items will appear here.</div>{% endif %}
+      {% if not selected_modality_ids %}<div class="empty">Select at least one modality above and save, then its scope items will appear here.</div>{% endif %}
       {% endfor %}
 
-      <button type="submit" class="btn">Save Scope selections</button>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600;">Save Scope selections</button>
     </form>
   </div>
 </div>
@@ -136,57 +162,87 @@
       </div>
 
       <h3 style="margin-bottom:10px;">General</h3>
-      <div style="margin-bottom:24px;">
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for item in general_items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+            <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_exclusion_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
 
       {% for modality, items in modality_items.items %}
       <h3 style="margin-bottom:10px;">{{ modality.name }}</h3>
-      <div style="margin-bottom:24px;">
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for item in items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+            <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_exclusion_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
       {% endfor %}
 
       <h3 style="margin-bottom:10px;">Miscellaneous</h3>
-      <div style="margin-bottom:24px;">
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for item in misc_items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+            <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_exclusion_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
 
       {% if proposal.contract_administration_included %}
       <h3 style="margin-bottom:10px;">Contract Administration</h3>
-      <div style="margin-bottom:24px;">
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for item in ca_items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+            <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_exclusion_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
       {% endif %}
 
       {% if proposal.novation_included %}
       <h3 style="margin-bottom:10px;">Novation</h3>
-      <div style="margin-bottom:24px;">
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for item in novation_items %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;">
+            <span>{{ overrides|get_item:item.pk|default:item.text }}{% if item.pk in overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; margin-left:auto; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_exclusion_{{ item.pk }}" placeholder="Leave blank to use standard wording: {{ item.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ overrides|get_item:item.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
       {% endif %}
 
-      <button type="submit" class="btn">Save Exclusions</button>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600;">Save Exclusions</button>
     </form>
   </div>
 </div>
@@ -232,7 +288,7 @@
         <strong>Running total: ${{ proposal.fee_amount|default:"0" }}</strong> <span style="font-size:12.5px; color:var(--muted);">(recalculated when you save)</span>
       </div>
 
-      <button type="submit" class="btn">Save Fees</button>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600;">Save Fees</button>
     </form>
   </div>
 </div>
@@ -245,8 +301,9 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_terms">
 
-      <h3 style="margin-bottom:10px;">Terms &amp; Conditions</h3>
-      <div style="margin-bottom:24px;">
+      <h3 style="margin-bottom:6px;">Terms &amp; Conditions</h3>
+      <div class="item-group" style="margin-bottom:24px;">
+        <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for clause in all_clauses %}
         <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0; {% if clause.mandatory %}color:var(--muted);{% endif %}">
           <input type="checkbox" name="term_clause" value="{{ clause.pk }}" {% if clause.pk in included_ids or clause.mandatory %}checked{% endif %} {% if clause.mandatory %}disabled{% endif %} style="margin-top:3px;">
@@ -256,23 +313,44 @@
         {% endfor %}
       </div>
 
-      <h3 style="margin-bottom:10px;">Invoice &amp; Payment Terms</h3>
+      <h3 style="margin-bottom:6px;">Invoice &amp; Payment Terms</h3>
+      <p style="font-size:12.5px; color:var(--muted); margin-bottom:10px;">Tick every stage that applies and set its percentage - e.g. 25% at site visit + 50% at initial preliminary documentation + 25% at final preliminary documentation. Running total: <strong id="pct-total">{{ total_pct }}</strong>% <span style="color:var(--muted);">(doesn't need to be exactly 100, but usually should be)</span></p>
       <div style="margin-bottom:16px;">
         {% for option in all_payment_terms %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
-          <input type="radio" name="selected_payment_term" value="{{ option.pk }}" {% if proposal.selected_payment_term_id == option.pk %}checked{% endif %} style="margin-top:3px;"> {{ option.text }}
-        </label>
+        <div style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0; border-bottom:1px solid #f3f4f6;">
+          <input type="checkbox" name="payment_term_option" value="{{ option.pk }}" {% if option.pk in selected_option_ids %}checked{% endif %} style="margin-top:3px;">
+          <span style="flex:1;">{{ option.text }}</span>
+          <input type="number" step="0.01" name="payment_term_pct_{{ option.pk }}" value="{{ selection_pct|get_item:option.pk|default_if_none:option.default_percentage }}" style="width:80px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;"> %
+        </div>
         {% endfor %}
       </div>
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Override wording <span style="font-weight:400;">(leave blank to use the selected option's standard wording above)</span></label>
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Additional payment terms note <span style="font-weight:400;">(optional, on top of the selections above)</span></label>
         <textarea name="payment_term_override_text" rows="2" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ proposal.payment_term_override_text }}</textarea>
       </div>
 
-      <button type="submit" class="btn">Save Terms &amp; Payment</button>
+      <button type="submit" class="btn" style="font-size:15px; padding:12px 28px; font-weight:600;">Save Terms &amp; Payment</button>
     </form>
   </div>
 </div>
 {% endif %}
+
+<script>
+function toggleGroup(link, checked) {
+  var group = link.closest('.item-group');
+  if (group) {
+    group.querySelectorAll('input[type=checkbox]:not(:disabled)').forEach(function(cb) { cb.checked = checked; });
+  }
+  return false;
+}
+function toggleWording(link) {
+  var row = link.closest('div');
+  var textarea = row.parentElement.querySelector('textarea');
+  if (textarea) {
+    textarea.style.display = textarea.style.display === 'none' ? 'block' : 'none';
+  }
+  return false;
+}
+</script>
 
 {% endblock %}
