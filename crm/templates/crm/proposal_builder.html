@@ -305,11 +305,15 @@
       <div class="item-group" style="margin-bottom:24px;">
         <div style="text-align:right; margin-bottom:6px; font-size:12.5px;"><a href="#" onclick="return toggleGroup(this, true);">Select all</a> &middot; <a href="#" onclick="return toggleGroup(this, false);">Select none</a></div>
         {% for clause in all_clauses %}
-        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0; {% if clause.mandatory %}color:var(--muted);{% endif %}">
-          <input type="checkbox" name="term_clause" value="{{ clause.pk }}" {% if clause.pk in included_ids or clause.mandatory %}checked{% endif %} {% if clause.mandatory %}disabled{% endif %} style="margin-top:3px;">
-          {% if clause.mandatory %}<input type="hidden" name="term_clause" value="{{ clause.pk }}">{% endif %}
-          <span><strong>{{ clause.number }}.</strong> {{ clause.text }} {% if clause.mandatory %}<span class="tag">Mandatory</span>{% endif %}</span>
-        </label>
+        <div style="padding:6px 0; border-bottom:1px solid #f3f4f6; {% if clause.mandatory %}color:var(--muted);{% endif %}">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px;">
+            <input type="checkbox" name="term_clause" value="{{ clause.pk }}" {% if clause.pk in included_ids or clause.mandatory %}checked{% endif %} {% if clause.mandatory %}disabled{% endif %} style="margin-top:3px;">
+            {% if clause.mandatory %}<input type="hidden" name="term_clause" value="{{ clause.pk }}">{% endif %}
+            <span style="flex:1;"><strong>{{ clause.number }}.</strong> {{ term_overrides|get_item:clause.pk|default:clause.text }} {% if clause.mandatory %}<span class="tag">Mandatory</span>{% endif %}{% if clause.pk in term_overrides %} <span class="tag warn">Edited</span>{% endif %}</span>
+            <a href="#" onclick="return toggleWording(this);" style="font-size:11.5px; white-space:nowrap;">edit wording</a>
+          </label>
+          <textarea name="override_term_{{ clause.pk }}" placeholder="Leave blank to use standard wording: {{ clause.text }}" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">{{ term_overrides|get_item:clause.pk }}</textarea>
+        </div>
         {% endfor %}
       </div>
 
@@ -345,7 +349,7 @@ function toggleGroup(link, checked) {
 }
 function toggleWording(link) {
   var row = link.closest('div');
-  var textarea = row.parentElement.querySelector('textarea');
+  var textarea = row.querySelector('textarea');
   if (textarea) {
     textarea.style.display = textarea.style.display === 'none' ? 'block' : 'none';
   }

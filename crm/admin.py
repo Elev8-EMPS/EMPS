@@ -5,6 +5,7 @@ from .models import (
     Organisation, Contact, Enquiry, Proposal, Communication, ProposalFollowUp,
     FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
     ProposalPaymentTermSelection, ProposalScopeItemOverride, ProposalExclusionItemOverride,
+    ProposalTermClauseOverride,
 )
 
 
@@ -110,3 +111,8 @@ class ProposalScopeItemOverrideAdmin(AuditedAdminMixin, TenantScopedAdmin, admin
 @admin.register(ProposalExclusionItemOverride)
 class ProposalExclusionItemOverrideAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
     list_display = ("proposal", "exclusion_item", "custom_text", "tenant")
+
+
+@admin.register(ProposalTermClauseOverride)
+class ProposalTermClauseOverrideAdmin(AuditedAdminMixin, TenantScopedAdmin, admin.ModelAdmin):
+    list_display = ("proposal", "term_clause", "custom_text", "tenant")

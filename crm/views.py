@@ -12,6 +12,7 @@ from .models import (
     Organisation, Proposal, Enquiry, Communication, Contact,
     FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
     ProposalPaymentTermSelection, ProposalScopeItemOverride, ProposalExclusionItemOverride,
+    ProposalTermClauseOverride,
 )
 
 ORGANISATION_EDITABLE_FIELDS = [
@@ -399,6 +400,15 @@ def proposal_builder(request, pk):
             proposal.payment_term_override_text = request.POST.get("payment_term_override_text", "").strip()
             proposal.save(update_fields=["payment_term_override_text"])
 
+            for clause in FPTermClause.objects.filter(tenant=tenant):
+                override_text = request.POST.get(f"override_term_{clause.id}", "").strip()
+                if override_text and override_text != clause.text:
+                    ProposalTermClauseOverride.objects.update_or_create(
+                        tenant=tenant, proposal=proposal, term_clause=clause, defaults={"custom_text": override_text},
+                    )
+                else:
+                    ProposalTermClauseOverride.objects.filter(proposal=proposal, term_clause=clause).delete()
+
             ProposalPaymentTermSelection.objects.filter(proposal=proposal).delete()
             selected_option_ids = request.POST.getlist("payment_term_option")
             for i, option_id in enumerate(selected_option_ids):
@@ -485,6 +495,7 @@ def proposal_builder(request, pk):
 
     if tab == "terms":
         included_ids = set(proposal.included_term_clauses.values_list("id", flat=True))
+        term_overrides = {o.term_clause_id: o.custom_text for o in proposal.term_clause_overrides.all()}
         existing_selections = list(proposal.payment_term_selections.select_related("option").order_by("order"))
         selected_option_ids = {s.option_id for s in existing_selections}
         selection_pct = {s.option_id: s.percentage for s in existing_selections}
@@ -496,6 +507,7 @@ def proposal_builder(request, pk):
             "selected_option_ids": selected_option_ids,
             "selection_pct": selection_pct,
             "total_pct": total_pct,
+            "term_overrides": term_overrides,
         })
 
     return render(request, "crm/proposal_builder.html", context)

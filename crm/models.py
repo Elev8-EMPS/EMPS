@@ -429,3 +429,18 @@ class ProposalExclusionItemOverride(TenantModel):
 
     def __str__(self):
         return self.custom_text[:80]
+
+
+class ProposalTermClauseOverride(TenantModel):
+    """Custom wording for one FPTermClause, on one proposal only - same
+    pattern as ProposalScopeItemOverride. Works on mandatory clauses
+    too - wording and 'always included' are separate concerns."""
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="term_clause_overrides")
+    term_clause = models.ForeignKey(FPTermClause, on_delete=models.CASCADE)
+    custom_text = models.TextField()
+
+    class Meta:
+        unique_together = [("proposal", "term_clause")]
+
+    def __str__(self):
+        return self.custom_text[:80]
