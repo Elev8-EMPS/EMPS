@@ -271,7 +271,7 @@ def proposal_detail(request, pk):
 def proposal_builder(request, pk):
     tenant = get_user_tenant(request)
     proposal = get_object_or_404(
-        Proposal.objects.select_related("organisation", "contact", "signing_director", "selected_payment_term"),
+        Proposal.objects.select_related("organisation", "contact", "signing_director"),
         pk=pk, tenant=tenant,
     )
     if not can_edit_proposals(request.user):
