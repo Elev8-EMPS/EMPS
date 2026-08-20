@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% load crm_extras %}
+{% block title %}Builder - {{ proposal.proposal_number }} - EPMS{% endblock %}
+{% block header %}{{ proposal.proposal_number }} Builder{% endblock %}
+{% block content %}
+
+<div class="workspace-header">
+  <h1>{{ proposal.proposal_number }} <span style="font-weight:400; color:var(--muted);">- {{ proposal.organisation.legal_name }}</span></h1>
+  <div class="meta">
+    <span class="tag {% if proposal.status == 'accepted' %}ok{% elif proposal.status == 'declined' or proposal.status == 'lost' %}danger{% endif %}">{{ proposal.get_status_display }}</span>
+    &middot; Fee total: <strong>${{ proposal.fee_amount|default:"0" }}</strong>
+    &middot; <a href="/proposals/{{ proposal.pk }}/">Back to Proposal</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="?tab=details" class="{% if tab == 'details' %}active{% endif %}">1. Details</a>
+  <a href="?tab=scope" class="{% if tab == 'scope' %}active{% endif %}">2. Modalities &amp; Scope</a>
+  <a href="?tab=exclusions" class="{% if tab == 'exclusions' %}active{% endif %}">3. Exclusions</a>
+  <a href="?tab=fees" class="{% if tab == 'fees' %}active{% endif %}">4. Fees</a>
+  <a href="?tab=terms" class="{% if tab == 'terms' %}active{% endif %}">5. Terms &amp; Payment</a>
+</div>
+
+{% if tab == 'details' %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_details">
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project title <span style="font-weight:400;">(e.g. "Proposed mixed use development" - shown on the cover page)</span></label>
+        <input type="text" name="project_title" value="{{ proposal.project_title }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project address</label>
+        <textarea name="project_address" rows="2" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ proposal.project_address }}</textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Attention (contact)</label>
+          <select name="contact" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for c in all_contacts %}<option value="{{ c.pk }}" {% if proposal.contact_id == c.pk %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Signing director</label>
+          <select name="signing_director" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">— None —</option>
+            {% for u in all_users %}<option value="{{ u.pk }}" {% if proposal.signing_director_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+          <input type="checkbox" name="is_individual_client" {% if proposal.is_individual_client %}checked{% endif %}> This client is an individual (drops the "Client:" line from the cover page)
+        </label>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Date enquiry/info received</label>
+          <input type="date" name="enquiry_received_date" value="{{ proposal.enquiry_received_date|date:'Y-m-d' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Project budget <span style="font-weight:400;">(referenced in the standard T&Cs)</span></label>
+          <input type="number" step="0.01" name="project_budget" value="{{ proposal.project_budget|default:'' }}" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:6px;">Budget entry mode</label>
+        <label style="display:block; margin-bottom:8px; font-size:14px;"><input type="radio" name="budget_mode" value="lump_sum" {% if proposal.budget_mode == 'lump_sum' %}checked{% endif %}> One combined budget for the whole project</label>
+        <label style="display:block; font-size:14px;"><input type="radio" name="budget_mode" value="per_modality" {% if proposal.budget_mode == 'per_modality' %}checked{% endif %}> Split budget by modality</label>
+        <p style="font-size:12px; color:var(--muted); margin-top:6px;">This controls how the Fees tab is laid out - change it here first, then go to the Fees tab.</p>
+      </div>
+      <button type="submit" class="btn">Save Details</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'scope' %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_scope">
+      <h3 style="margin-bottom:10px;">Modalities included in this proposal</h3>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:24px;">
+        {% for m in all_modalities %}
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px;">
+          <input type="checkbox" name="modalities" value="{{ m.pk }}" {% if m.pk in selected_modality_ids %}checked{% endif %}> {{ m.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <p style="font-size:12.5px; color:var(--muted); margin-bottom:16px;">Tick the modalities above, click Save, then come back to this tab to tick individual scope items for each one.</p>
+      <button type="submit" class="btn" style="margin-bottom:24px;">Save modality selection</button>
+
+      <h3 style="margin-bottom:10px;">General <span style="font-weight:400; color:var(--muted); font-size:13px;">(applies regardless of which modalities are selected)</span></h3>
+      <div style="margin-bottom:24px;">
+        {% for item in general_items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+
+      {% for modality, items in modality_items.items %}
+      <h3 style="margin-bottom:10px;">{{ modality.name }}</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="scope_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+      {% empty %}
+      {% if selected_modality_ids %}{% else %}<div class="empty">Select at least one modality above and save, then its scope items will appear here.</div>{% endif %}
+      {% endfor %}
+
+      <button type="submit" class="btn">Save Scope selections</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'exclusions' %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_exclusions">
+
+      <div style="margin-bottom:20px; display:flex; gap:20px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px;"><input type="checkbox" name="contract_administration_included" {% if proposal.contract_administration_included %}checked{% endif %}> Include Contract Administration</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px;"><input type="checkbox" name="novation_included" {% if proposal.novation_included %}checked{% endif %}> Include Novation</label>
+      </div>
+
+      <h3 style="margin-bottom:10px;">General</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in general_items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+
+      {% for modality, items in modality_items.items %}
+      <h3 style="margin-bottom:10px;">{{ modality.name }}</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      <h3 style="margin-bottom:10px;">Miscellaneous</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in misc_items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+
+      {% if proposal.contract_administration_included %}
+      <h3 style="margin-bottom:10px;">Contract Administration</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in ca_items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if proposal.novation_included %}
+      <h3 style="margin-bottom:10px;">Novation</h3>
+      <div style="margin-bottom:24px;">
+        {% for item in novation_items %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="checkbox" name="exclusion_item" value="{{ item.pk }}" {% if item.pk not in deselected_ids %}checked{% endif %} style="margin-top:3px;"> {{ item.text }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn">Save Exclusions</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'fees' %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_fees">
+
+      <h3 style="margin-bottom:10px;">Project Fees <span style="font-weight:400; color:var(--muted); font-size:13px;">({{ proposal.get_budget_mode_display }} - change on the Details tab)</span></h3>
+      <table class="list" style="margin-bottom:24px;">
+        <tr>
+          <th>Stage</th>
+          {% if proposal.budget_mode == 'lump_sum' %}<th>Amount</th>{% else %}{% for m in selected_modalities %}<th>{{ m.name }}</th>{% endfor %}{% endif %}
+        </tr>
+        {% for stage_key, stage_label in stage_choices %}
+        <tr>
+          <td>{{ stage_label }}</td>
+          {% if proposal.budget_mode == 'lump_sum' %}
+          <td><input type="number" step="0.01" name="amount_lump_{{ stage_key }}" value="{{ existing_lines_lump|get_item:stage_key|default_if_none:'' }}" style="width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;"></td>
+          {% else %}
+          {% for m in selected_modalities %}
+          <td><input type="number" step="0.01" name="amount_mod{{ m.pk }}_{{ stage_key }}" value="{{ existing_lines_per_modality|get_item:m.pk|get_item:stage_key|default_if_none:'' }}" style="width:120px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;"></td>
+          {% endfor %}
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </table>
+      <p style="font-size:12px; color:var(--muted); margin:-14px 0 24px;">GST and totals are calculated automatically when the proposal document is generated. Leave a stage at $0 to leave it off the proposal.</p>
+
+      <h3 style="margin-bottom:10px;">Contract Administration</h3>
+      <div style="margin-bottom:24px; {% if not proposal.contract_administration_included %}opacity:0.5;{% endif %}">
+        {% if not proposal.contract_administration_included %}<p style="font-size:12.5px; color:var(--muted);">Not included - turn this on from the Exclusions tab first.</p>{% endif %}
+        <label style="display:block; margin-bottom:6px; font-size:14px;"><input type="radio" name="ca_fee_type" value="fixed" {% if proposal.ca_fee_type == 'fixed' %}checked{% endif %}> Fixed Fee</label>
+        <input type="number" step="0.01" name="ca_fixed_fee" value="{{ proposal.ca_fixed_fee|default:'' }}" placeholder="Fixed fee amount" style="width:200px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; margin:6px 0 12px 24px;">
+        <label style="display:block; font-size:14px;"><input type="radio" name="ca_fee_type" value="hourly" {% if proposal.ca_fee_type == 'hourly' %}checked{% endif %}> Hourly Rates <span style="font-weight:400; color:var(--muted);">(Director/Senior Engineer $250/hr, Draftsperson $160/hr, Administration $120/hr, all + GST)</span></label>
+      </div>
+
+      <div style="padding:14px; background:#f3f4f6; border-radius:8px; margin-bottom:20px;">
+        <strong>Running total: ${{ proposal.fee_amount|default:"0" }}</strong> <span style="font-size:12.5px; color:var(--muted);">(recalculated when you save)</span>
+      </div>
+
+      <button type="submit" class="btn">Save Fees</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'terms' %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_terms">
+
+      <h3 style="margin-bottom:10px;">Terms &amp; Conditions</h3>
+      <div style="margin-bottom:24px;">
+        {% for clause in all_clauses %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0; {% if clause.mandatory %}color:var(--muted);{% endif %}">
+          <input type="checkbox" name="term_clause" value="{{ clause.pk }}" {% if clause.pk in included_ids or clause.mandatory %}checked{% endif %} {% if clause.mandatory %}disabled{% endif %} style="margin-top:3px;">
+          {% if clause.mandatory %}<input type="hidden" name="term_clause" value="{{ clause.pk }}">{% endif %}
+          <span><strong>{{ clause.number }}.</strong> {{ clause.text }} {% if clause.mandatory %}<span class="tag">Mandatory</span>{% endif %}</span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <h3 style="margin-bottom:10px;">Invoice &amp; Payment Terms</h3>
+      <div style="margin-bottom:16px;">
+        {% for option in all_payment_terms %}
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13.5px; padding:6px 0;">
+          <input type="radio" name="selected_payment_term" value="{{ option.pk }}" {% if proposal.selected_payment_term_id == option.pk %}checked{% endif %} style="margin-top:3px;"> {{ option.text }}
+        </label>
+        {% endfor %}
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Override wording <span style="font-weight:400;">(leave blank to use the selected option's standard wording above)</span></label>
+        <textarea name="payment_term_override_text" rows="2" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">{{ proposal.payment_term_override_text }}</textarea>
+      </div>
+
+      <button type="submit" class="btn">Save Terms &amp; Payment</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

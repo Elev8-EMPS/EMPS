@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}New Fee Proposal - EPMS{% endblock %}
+{% block header %}New Fee Proposal{% endblock %}
+{% block content %}
+<div class="section">
+  <div style="padding:22px;">
+    <form method="post">
+      {% csrf_token %}
+      {% if enquiry %}
+      <p style="font-size:13.5px; color:var(--muted); margin-bottom:16px;">Creating from enquiry <strong>{{ enquiry.enquiry_number }}</strong> for <strong>{{ enquiry.organisation.legal_name }}</strong>.</p>
+      {% else %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Client organisation <span style="color:var(--danger);">*</span></label>
+        <select name="organisation" required style="width:100%; max-width:400px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— Select —</option>
+          {% for o in organisations %}<option value="{{ o.pk }}">{{ o.legal_name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:4px;">Attention (contact)</label>
+        <select name="contact" style="width:100%; max-width:400px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+          <option value="">— None yet —</option>
+          {% for c in contacts %}<option value="{{ c.pk }}">{{ c.first_name }} {{ c.last_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn">Create &amp; open Builder</button>
+      <a href="/proposals/" style="margin-left:10px;">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

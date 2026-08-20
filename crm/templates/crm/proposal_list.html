@@ -12,6 +12,10 @@
 </div>
 {% endif %}
 
+{% if full_access %}
+<div style="text-align:right; margin-bottom:14px;"><a href="/proposals/new/" class="btn" style="background:var(--ok);">+ New Fee Proposal</a></div>
+{% endif %}
+
 <div class="searchbar">
   <form method="get" style="display:flex; gap:10px;">
     <input type="text" name="q" value="{{ q }}" placeholder="Search by proposal number or client...">

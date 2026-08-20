@@ -8,6 +8,7 @@
   <div class="meta">
     <a href="/organisations/{{ enquiry.organisation.pk }}/">{{ enquiry.organisation.legal_name }}</a>
     &middot; <span class="tag {% if enquiry.status == 'proposal_created' %}ok{% elif enquiry.status == 'declined' or enquiry.status == 'closed' %}danger{% endif %}">{{ enquiry.get_status_display }}</span>
+    {% if can_view_proposals %}&middot; <a href="/enquiries/{{ enquiry.pk }}/create-proposal/">Create Fee Proposal</a>{% endif %}
     &middot; <a href="/admin/crm/enquiry/{{ enquiry.pk }}/change/">Edit in Admin</a>
   </div>
 </div>

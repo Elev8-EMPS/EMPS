@@ -8,7 +8,8 @@
   <div class="meta">
     <a href="/organisations/{{ proposal.organisation.pk }}/">{{ proposal.organisation.legal_name }}</a>
     &middot; <span class="tag {% if proposal.status == 'accepted' %}ok{% elif proposal.status == 'declined' or proposal.status == 'lost' %}danger{% elif proposal.status == 'follow_up_due' %}warn{% endif %}">{{ proposal.get_status_display }}</span>
-    &middot; <a href="/admin/crm/proposal/{{ proposal.pk }}/change/">Edit in Admin</a>
+    &middot; <a href="/proposals/{{ proposal.pk }}/builder/">Open in Builder</a>
+    {% if full_access %}&middot; <a href="/admin/crm/proposal/{{ proposal.pk }}/change/">Edit in Admin</a>{% endif %}
   </div>
 </div>
 

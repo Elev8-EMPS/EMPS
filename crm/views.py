@@ -6,8 +6,12 @@ from django.utils import timezone
 
 from django.contrib.auth.models import User
 
-from tenants.utils import get_user_tenant, can_view_proposals, get_dashboard_visibility, diff_and_log_update
-from .models import Organisation, Proposal, Enquiry, Communication, Contact
+from tenants.utils import get_user_tenant, can_view_proposals, can_edit_proposals, get_dashboard_visibility, diff_and_log_update
+from tenants.models import Modality, log_audit
+from .models import (
+    Organisation, Proposal, Enquiry, Communication, Contact,
+    FPScopeItem, FPExclusionItem, FPTermClause, FPPaymentTermOption, ProposalFeeLine,
+)
 
 ORGANISATION_EDITABLE_FIELDS = [
     "legal_name", "trading_name", "registration_number", "organisation_type", "industry",
@@ -168,6 +172,50 @@ def proposal_list(request):
 
 
 @login_required
+def proposal_create(request, enquiry_pk=None):
+    tenant = get_user_tenant(request)
+    if not can_edit_proposals(request.user):
+        messages.error(request, "You don't have permission to create Fee Proposals.")
+        return redirect("command_centre")
+
+    enquiry = None
+    if enquiry_pk:
+        enquiry = get_object_or_404(Enquiry, pk=enquiry_pk, tenant=tenant)
+
+    if request.method == "POST":
+        org_id = request.POST.get("organisation") or (enquiry.organisation_id if enquiry else None)
+        if not org_id:
+            messages.error(request, "Select a client organisation.")
+            return redirect(request.path)
+
+        number = f"FP-{Proposal.objects.filter(tenant=tenant).count() + 1:04d}"
+        while Proposal.objects.filter(proposal_number=number).exists():
+            number += "X"
+
+        proposal = Proposal.objects.create(
+            tenant=tenant, proposal_number=number, organisation_id=org_id,
+            contact_id=request.POST.get("contact") or (enquiry.contact_id if enquiry else None),
+            enquiry=enquiry,
+            project_title=enquiry.description[:255] if enquiry else "",
+            project_address=enquiry.project_address if enquiry else "",
+        )
+        if enquiry:
+            enquiry.status = "proposal_created"
+            enquiry.save(update_fields=["status"])
+
+        messages.success(request, f"Fee Proposal {proposal.proposal_number} created - now fill in the details.")
+        return redirect("proposal_builder", pk=proposal.pk)
+
+    return render(request, "crm/proposal_create.html", {
+        "active_nav": "proposals",
+        "user_tenant": tenant,
+        "enquiry": enquiry,
+        "organisations": Organisation.objects.filter(tenant=tenant).order_by("legal_name"),
+        "contacts": (enquiry.organisation.contacts.all() if enquiry else Contact.objects.filter(tenant=tenant)).order_by("first_name"),
+    })
+
+
+@login_required
 def proposal_detail(request, pk):
     tenant = get_user_tenant(request)
     proposal = get_object_or_404(
@@ -216,6 +264,191 @@ def proposal_detail(request, pk):
         "follow_ups": proposal.follow_ups.all() if full_access else proposal.follow_ups.none(),
         "full_access": full_access,
     })
+
+
+@login_required
+def proposal_builder(request, pk):
+    tenant = get_user_tenant(request)
+    proposal = get_object_or_404(
+        Proposal.objects.select_related("organisation", "contact", "signing_director", "selected_payment_term"),
+        pk=pk, tenant=tenant,
+    )
+    if not can_edit_proposals(request.user):
+        messages.error(request, "You don't have permission to edit Fee Proposals.")
+        return redirect("proposal_detail", pk=proposal.pk)
+
+    tab = request.GET.get("tab", "details")
+    selected_modality_ids = set(proposal.modalities.values_list("id", flat=True))
+
+    # ---------------- POST handling ----------------
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "save_details":
+            before = {f: getattr(proposal, f) for f in [
+                "project_title", "project_address", "contact_id", "is_individual_client",
+                "enquiry_received_date", "project_budget", "budget_mode", "signing_director_id",
+            ]}
+            proposal.project_title = request.POST.get("project_title", "").strip()
+            proposal.project_address = request.POST.get("project_address", "").strip()
+            proposal.contact_id = request.POST.get("contact") or None
+            proposal.is_individual_client = request.POST.get("is_individual_client") == "on"
+            proposal.enquiry_received_date = request.POST.get("enquiry_received_date") or None
+            proposal.project_budget = request.POST.get("project_budget") or None
+            proposal.budget_mode = request.POST.get("budget_mode", proposal.budget_mode)
+            proposal.signing_director_id = request.POST.get("signing_director") or None
+            proposal.save()
+            diff_and_log_update(request.user, tenant, proposal, before, "Updated via Fee Proposal Builder - Details tab")
+            messages.success(request, "Details saved.")
+            return redirect(f"/proposals/{proposal.pk}/builder/?tab=details")
+
+        if action == "save_scope":
+            new_modality_ids = set(int(x) for x in request.POST.getlist("modalities"))
+            proposal.modalities.set(new_modality_ids)
+            relevant_items = FPScopeItem.objects.filter(tenant=tenant).filter(
+                Q(modality_id__in=new_modality_ids) | Q(modality__isnull=True)
+            )
+            checked_ids = set(int(x) for x in request.POST.getlist("scope_item"))
+            to_include = [i for i in relevant_items if i.id in checked_ids]
+            to_exclude = [i for i in relevant_items if i.id not in checked_ids]
+            if to_include:
+                proposal.deselected_scope_items.remove(*to_include)
+            if to_exclude:
+                proposal.deselected_scope_items.add(*to_exclude)
+            log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Scope tab",
+                      details=f"Modalities: {new_modality_ids}")
+            messages.success(request, "Scope saved.")
+            return redirect(f"/proposals/{proposal.pk}/builder/?tab=scope")
+
+        if action == "save_exclusions":
+            proposal.contract_administration_included = request.POST.get("contract_administration_included") == "on"
+            proposal.novation_included = request.POST.get("novation_included") == "on"
+            proposal.save(update_fields=["contract_administration_included", "novation_included"])
+
+            relevant_items = FPExclusionItem.objects.filter(tenant=tenant).filter(
+                Q(modality_id__in=selected_modality_ids) | Q(modality__isnull=True)
+            )
+            checked_ids = set(int(x) for x in request.POST.getlist("exclusion_item"))
+            to_include = [i for i in relevant_items if i.id in checked_ids]
+            to_exclude = [i for i in relevant_items if i.id not in checked_ids]
+            if to_include:
+                proposal.deselected_exclusion_items.remove(*to_include)
+            if to_exclude:
+                proposal.deselected_exclusion_items.add(*to_exclude)
+            log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Exclusions tab")
+            messages.success(request, "Exclusions saved.")
+            return redirect(f"/proposals/{proposal.pk}/builder/?tab=exclusions")
+
+        if action == "save_fees":
+            proposal.ca_fee_type = request.POST.get("ca_fee_type", "")
+            proposal.ca_fixed_fee = request.POST.get("ca_fixed_fee") or None
+            proposal.save(update_fields=["ca_fee_type", "ca_fixed_fee"])
+
+            ProposalFeeLine.objects.filter(proposal=proposal).delete()
+            total = 0
+            if proposal.budget_mode == "lump_sum":
+                for stage_key, _ in ProposalFeeLine.STAGE_CHOICES:
+                    amount = request.POST.get(f"amount_lump_{stage_key}") or 0
+                    if float(amount or 0) > 0:
+                        ProposalFeeLine.objects.create(tenant=tenant, proposal=proposal, stage=stage_key, modality=None, amount=amount)
+                        total += float(amount)
+            else:
+                for modality_id in selected_modality_ids:
+                    for stage_key, _ in ProposalFeeLine.STAGE_CHOICES:
+                        amount = request.POST.get(f"amount_mod{modality_id}_{stage_key}") or 0
+                        if float(amount or 0) > 0:
+                            ProposalFeeLine.objects.create(tenant=tenant, proposal=proposal, stage=stage_key, modality_id=modality_id, amount=amount)
+                            total += float(amount)
+            if proposal.contract_administration_included and proposal.ca_fee_type == "fixed" and proposal.ca_fixed_fee:
+                total += float(proposal.ca_fixed_fee)
+            proposal.fee_amount = round(total, 2)
+            proposal.save(update_fields=["fee_amount"])
+            log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Fees tab",
+                      details=f"New total: ${proposal.fee_amount}")
+            messages.success(request, "Fees saved.")
+            return redirect(f"/proposals/{proposal.pk}/builder/?tab=fees")
+
+        if action == "save_terms":
+            checked_clause_ids = set(int(x) for x in request.POST.getlist("term_clause"))
+            mandatory_ids = set(FPTermClause.objects.filter(tenant=tenant, mandatory=True).values_list("id", flat=True))
+            proposal.included_term_clauses.set(checked_clause_ids | mandatory_ids)
+            proposal.selected_payment_term_id = request.POST.get("selected_payment_term") or None
+            proposal.payment_term_override_text = request.POST.get("payment_term_override_text", "").strip()
+            proposal.save(update_fields=["selected_payment_term", "payment_term_override_text"])
+            log_audit(request.user, tenant, "update", proposal, reason="Updated via Fee Proposal Builder - Terms tab")
+            messages.success(request, "Terms & Conditions saved.")
+            return redirect(f"/proposals/{proposal.pk}/builder/?tab=terms")
+
+    # ---------------- GET context per tab ----------------
+    context = {
+        "active_nav": "proposals",
+        "user_tenant": tenant,
+        "proposal": proposal,
+        "tab": tab,
+        "selected_modality_ids": selected_modality_ids,
+        "all_modalities": Modality.objects.filter(tenant=tenant).order_by("name"),
+        "all_contacts": proposal.organisation.contacts.all().order_by("first_name"),
+        "all_users": User.objects.filter(profile__tenant=tenant, is_active=True).order_by("username"),
+    }
+
+    if tab == "scope":
+        deselected_ids = set(proposal.deselected_scope_items.values_list("id", flat=True))
+        general_items = FPScopeItem.objects.filter(tenant=tenant, modality__isnull=True).order_by("order")
+        modality_items = {}
+        for m in context["all_modalities"]:
+            if m.id in selected_modality_ids:
+                modality_items[m] = FPScopeItem.objects.filter(tenant=tenant, modality=m).order_by("order")
+        context.update({
+            "general_items": general_items,
+            "modality_items": modality_items,
+            "deselected_ids": deselected_ids,
+        })
+
+    if tab == "exclusions":
+        deselected_ids = set(proposal.deselected_exclusion_items.values_list("id", flat=True))
+        general_items = FPExclusionItem.objects.filter(
+            tenant=tenant, modality__isnull=True, is_miscellaneous=False,
+            is_contract_administration=False, is_novation=False,
+        ).order_by("order")
+        misc_items = FPExclusionItem.objects.filter(tenant=tenant, is_miscellaneous=True).order_by("order")
+        ca_items = FPExclusionItem.objects.filter(tenant=tenant, is_contract_administration=True).order_by("order")
+        novation_items = FPExclusionItem.objects.filter(tenant=tenant, is_novation=True).order_by("order")
+        modality_items = {}
+        for m in context["all_modalities"]:
+            if m.id in selected_modality_ids:
+                items = FPExclusionItem.objects.filter(tenant=tenant, modality=m).order_by("order")
+                if items.exists():
+                    modality_items[m] = items
+        context.update({
+            "general_items": general_items, "misc_items": misc_items,
+            "ca_items": ca_items, "novation_items": novation_items,
+            "modality_items": modality_items, "deselected_ids": deselected_ids,
+        })
+
+    if tab == 'fees':
+        existing_lines_lump = {}
+        existing_lines_per_modality = {}
+        for fl in proposal.fee_lines.all():
+            if fl.modality_id is None:
+                existing_lines_lump[fl.stage] = fl.amount
+            else:
+                existing_lines_per_modality.setdefault(fl.modality_id, {})[fl.stage] = fl.amount
+        context.update({
+            "stage_choices": ProposalFeeLine.STAGE_CHOICES,
+            "existing_lines_lump": existing_lines_lump,
+            "existing_lines_per_modality": existing_lines_per_modality,
+            "selected_modalities": [m for m in context["all_modalities"] if m.id in selected_modality_ids],
+        })
+
+    if tab == "terms":
+        included_ids = set(proposal.included_term_clauses.values_list("id", flat=True))
+        context.update({
+            "all_clauses": FPTermClause.objects.filter(tenant=tenant).order_by("number"),
+            "included_ids": included_ids,
+            "all_payment_terms": FPPaymentTermOption.objects.filter(tenant=tenant).order_by("order"),
+        })
+
+    return render(request, "crm/proposal_builder.html", context)
 
 
 @login_required
