@@ -369,7 +369,14 @@ class ProposalFeeLine(TenantModel):
         ("contract_design_documentation", "Contract Design & Documentation"),
     ]
     proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name="fee_lines")
-    stage = models.CharField(max_length=40, choices=STAGE_CHOICES)
+    stage = models.CharField(
+        max_length=100,
+        help_text="One of the 3 standard stage keys above, OR free text for a custom stage added on this proposal only.",
+    )
+    stage_label = models.CharField(
+        max_length=100, blank=True,
+        help_text="Display name for a custom stage - blank for the 3 standard stages, which use their fixed labels above.",
+    )
     modality = models.ForeignKey(Modality, null=True, blank=True, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     included = models.BooleanField(default=True, help_text="Whether this stage appears on the proposal at all.")
@@ -377,8 +384,13 @@ class ProposalFeeLine(TenantModel):
     class Meta:
         ordering = ["stage", "modality_id"]
 
+    @property
+    def display_name(self):
+        standard = dict(self.STAGE_CHOICES)
+        return standard.get(self.stage, self.stage_label or self.stage)
+
     def __str__(self):
-        return f"{self.get_stage_display()} - {self.modality or 'Combined'}: ${self.amount}"
+        return f"{self.display_name} - {self.modality or 'Combined'}: ${self.amount}"
 
 
 class ProposalPaymentTermSelection(TenantModel):

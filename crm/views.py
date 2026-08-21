@@ -384,6 +384,20 @@ def proposal_builder(request, pk):
                         if float(amount or 0) > 0:
                             ProposalFeeLine.objects.create(tenant=tenant, proposal=proposal, stage=stage_key, modality_id=modality_id, amount=amount)
                             total += float(amount)
+
+            # Custom stages the user added on this proposal - always a combined
+            # amount (not split by modality), added via the '+ Add a stage' button.
+            custom_names = request.POST.getlist("custom_stage_name")
+            custom_amounts = request.POST.getlist("custom_stage_amount")
+            for i, (name, amount) in enumerate(zip(custom_names, custom_amounts)):
+                name = name.strip()
+                if name and float(amount or 0) > 0:
+                    stage_key = f"custom_{i}_{name[:60]}"
+                    ProposalFeeLine.objects.create(
+                        tenant=tenant, proposal=proposal, stage=stage_key, stage_label=name,
+                        modality=None, amount=amount,
+                    )
+                    total += float(amount)
             if proposal.contract_administration_included and proposal.ca_fee_type == "fixed" and proposal.ca_fixed_fee:
                 total += float(proposal.ca_fixed_fee)
             proposal.fee_amount = round(total, 2)
@@ -479,10 +493,14 @@ def proposal_builder(request, pk):
         })
 
     if tab == 'fees':
+        standard_keys = {k for k, _ in ProposalFeeLine.STAGE_CHOICES}
         existing_lines_lump = {}
         existing_lines_per_modality = {}
+        existing_custom_stages = []
         for fl in proposal.fee_lines.all():
-            if fl.modality_id is None:
+            if fl.stage not in standard_keys:
+                existing_custom_stages.append({"name": fl.stage_label or fl.stage, "amount": fl.amount})
+            elif fl.modality_id is None:
                 existing_lines_lump[fl.stage] = fl.amount
             else:
                 existing_lines_per_modality.setdefault(fl.modality_id, {})[fl.stage] = fl.amount
@@ -490,6 +508,7 @@ def proposal_builder(request, pk):
             "stage_choices": ProposalFeeLine.STAGE_CHOICES,
             "existing_lines_lump": existing_lines_lump,
             "existing_lines_per_modality": existing_lines_per_modality,
+            "existing_custom_stages": existing_custom_stages,
             "selected_modalities": [m for m in fp_modalities if m.id in selected_modality_ids],
         })
 
